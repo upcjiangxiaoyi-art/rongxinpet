@@ -15,7 +15,7 @@ const DESIGN_SIZE = 500;
 // that size while avoiding a 1000 x 1000 redraw on high-DPR iPhones.
 const MAX_PIXEL_RATIO = 1.5;
 const SKIN_URL = new URL('./assets/nuoji-base-v1.png', import.meta.url).href;
-const BODY_LAYER_URL = new URL('./assets/nuoji-body-v3.png', import.meta.url).href;
+const BODY_LAYER_URL = new URL('./assets/nuoji-body-v3.png?v=0.17.1', import.meta.url).href;
 const TAIL_LAYER_URL = new URL('./assets/nuoji-tail-v1.png', import.meta.url).href;
 const UNDERPAINT_LAYER_URL = new URL('./assets/nuoji-underpaint-v1.png', import.meta.url).href;
 const LEFT_EAR_LAYER_URL = new URL('./assets/nuoji-ear-left-v2.png', import.meta.url).href;
