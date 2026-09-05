@@ -1,0 +1,9 @@
+{
+  "listeningFaceStationary": true,
+  "greetingForelegsAndPawsStationary": true,
+  "otherEyeAndNoseUnchanged": true,
+  "winkChangedPixels": 1215,
+  "frames": 120,
+  "fps": 30,
+  "renderer": "native Canvas; not browser tested"
+}

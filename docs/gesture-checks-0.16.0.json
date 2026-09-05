@@ -1,0 +1,8 @@
+{
+  "forearmMin": 205.24375751773772,
+  "forearmMax": 205.2437575177381,
+  "ratio": 0.9999999999999982,
+  "groundedPawY": 460,
+  "faceStationary": true,
+  "renderer": "native Canvas; not browser tested"
+}

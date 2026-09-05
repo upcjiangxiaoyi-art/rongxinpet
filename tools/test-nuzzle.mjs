@@ -36,16 +36,17 @@ const timers=new Map();
 const win={matchMedia:()=>({matches:false}),setTimeout(fn,delay){const id=nextId++;timers.set(id,{fn,due:clock+delay});return id;},clearTimeout(id){timers.delete(id)},cancelAnimationFrame(){},addEventListener(){},removeEventListener(){}};
 const fakeRenderer={state:'idle',form:'sitting',setState(s){this.state=s},setForm(s){this.form=s},currentForm(){return this.form}};
 const root={setAttribute(){},dataset:{},classList:{add(){},remove(){}}};
-const context=vm.createContext({window:win,document:{getElementById(){return null}},Date:{now:()=>clock},performance:{now:()=>clock},console,URL,PET_STATES,NUZZLE_DURATION_MS:duration,NuojiRenderer,getWalkStrideLength,fakeRenderer,root});
+const context=vm.createContext({window:win,document:{getElementById(){return null}},Date:{now:()=>clock},performance:{now:()=>clock},console,URL,PET_STATES,NUZZLE_DURATION_MS:duration,WAVE_DURATION_MS:mod.WAVE_DURATION_MS,NuojiRenderer,getWalkStrideLength,fakeRenderer,root});
 let code=await readFile(new URL('../index.js',import.meta.url),'utf8');
 code=code.slice(code.indexOf('\n')+1,code.lastIndexOf("if (document.readyState === 'loading')"))
     .replaceAll('import.meta.url',JSON.stringify(url.href)).replaceAll('export function','function');
 vm.runInContext(code+`\nrenderer=fakeRenderer; ui={root,bubble:{classList:{remove(){},add(){}}}}; settings={enabled:true,autoWalk:false,showBubble:false};
- globalThis.test={doublePetNuoji,beginThinking,handleTypingInput,handlePointerMove,
+ globalThis.test={wave(){transitionTo(PET_STATES.WAVE,{duration:600,force:true})},doublePetNuoji,beginThinking,handleTypingInput,handlePointerMove,
  setDrag(){drag.active=true;drag.pointerId=1;drag.startX=0;drag.startY=0;setPixelPosition=()=>{};},
  reaction(){return reactionTimer},state(){return renderer.state},form(){return renderer.form}};`,context);
 function advance(ms){clock+=ms;for(const [id,t] of [...timers])if(t.due<=clock){timers.delete(id);t.fn()}}
 const app=context.test;
+app.wave();advance(mod.WAVE_DURATION_MS-1);assert.equal(app.state(),'wave');advance(1);assert.equal(app.state(),'idle');
 app.doublePetNuoji();assert.equal(app.state(),'nuzzling');advance(4199);assert.equal(app.state(),'nuzzling');advance(1);assert.equal(app.state(),'idle');
 app.doublePetNuoji();advance(1000);app.doublePetNuoji();advance(3200);assert.equal(app.state(),'nuzzling');advance(1000);assert.equal(app.state(),'idle');
 app.doublePetNuoji();const nuzzleTimer=app.reaction();

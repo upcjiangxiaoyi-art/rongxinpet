@@ -1,4 +1,4 @@
-import { NuojiRenderer, PET_STATES, getWalkStrideLength, NUZZLE_DURATION_MS } from './pet-renderer.js';
+import { NuojiRenderer, PET_STATES, getWalkStrideLength, NUZZLE_DURATION_MS, WAVE_DURATION_MS } from './pet-renderer.js';
 
 const MODULE_NAME = 'nuoji_pet';
 const DEFAULT_EXTENSION_NAME = 'third-party/nuoji-pet';
@@ -52,7 +52,7 @@ const stateLabels = Object.freeze({
     [PET_STATES.PETTING]: '糯叽被摸摸了',
     [PET_STATES.NUZZLING]: '糯叽在蹭蹭你',
     [PET_STATES.SLEEPING]: '糯叽睡着了',
-    [PET_STATES.WAVE]: '糯叽在挥爪',
+    [PET_STATES.WAVE]: '糯叽在歪头打招呼',
 });
 
 let context;
@@ -1144,6 +1144,8 @@ function transitionTo(state, {
     if (!renderer || !Object.values(PET_STATES).includes(state)) {
         return;
     }
+
+    if (state === PET_STATES.WAVE) duration = Math.max(duration, WAVE_DURATION_MS);
 
     const now = Date.now();
     if (!force && priority < currentPriority && now < priorityUntil) {

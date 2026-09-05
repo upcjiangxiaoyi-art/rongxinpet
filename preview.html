@@ -113,7 +113,7 @@
                 <button data-state="petting">摸摸</button>
                 <button data-state="nuzzling">蹭蹭你</button>
                 <button data-state="sleeping">困嘟嘟</button>
-                <button data-state="wave">挥爪</button>
+                <button data-state="wave">歪头打招呼</button>
                 <button data-form="walking" data-direction="-1">向左走</button>
                 <button data-form="walking" data-direction="1">向右走</button>
             </div>
@@ -133,7 +133,7 @@
     </main>
 
     <script type="module">
-        import { NuojiRenderer, PET_STATES, NUZZLE_DURATION_MS } from './pet-renderer.js';
+        import { NuojiRenderer, PET_STATES, NUZZLE_DURATION_MS, WAVE_DURATION_MS } from './pet-renderer.js';
 
         const canvas = document.getElementById('nuoji-preview');
         const renderer = new NuojiRenderer(canvas);
@@ -172,8 +172,8 @@
                     : state === PET_STATES.THINKING ? 'ball' : 'sitting',
             );
             renderer.setState(state);
-            if (state === PET_STATES.NUZZLING) {
-                reactionTimer = setTimeout(() => setState(PET_STATES.IDLE), NUZZLE_DURATION_MS);
+            if ([PET_STATES.NUZZLING, PET_STATES.WAVE].includes(state)) {
+                reactionTimer = setTimeout(() => setState(PET_STATES.IDLE), state === PET_STATES.WAVE ? WAVE_DURATION_MS : NUZZLE_DURATION_MS);
             }
             document.querySelectorAll('button').forEach((button) => {
                 button.classList.toggle('is-active', button.dataset.state === state);
