@@ -1,5 +1,7 @@
 import { NuojiRenderer, PET_STATES, getWalkStrideLength, NUZZLE_DURATION_MS, WAVE_DURATION_MS } from './pet-renderer.js';
 
+import { Companion, SCENES, sceneLines } from './companion.js';
+
 const MODULE_NAME = 'nuoji_pet';
 const DEFAULT_EXTENSION_NAME = 'third-party/nuoji-pet';
 const POSITION_MARGIN = 10;
@@ -37,6 +39,7 @@ const DEFAULT_SETTINGS = Object.freeze({
     reducedMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
     showBubble: true,
     autoWalk: true,
+    customBubbles: {},
     position: {
         x: 0.82,
         y: 0.68,
@@ -58,6 +61,8 @@ const stateLabels = Object.freeze({
 let context;
 let coreApi;
 let settings;
+let companion;
+let reportUntil = 0;
 let renderer;
 let ui;
 let initializePromise;
@@ -164,6 +169,8 @@ function getSettings() {
         }
     }
 
+    if (!stored.customBubbles || typeof stored.customBubbles !== 'object' || Array.isArray(stored.customBubbles)) stored.customBubbles = {};
+
     stored.position = {
         ...DEFAULT_SETTINGS.position,
         ...(stored.position ?? {}),
@@ -194,7 +201,7 @@ function createPetUi() {
     root.innerHTML = `
         <div class="nuoji-speech" aria-live="polite"></div>
         <canvas class="nuoji-canvas" width="500" height="500" aria-hidden="true"></canvas>
-        <span class="nuoji-drag-hint" aria-hidden="true">拖动 · 点摸摸 · 长按抱抱</span>
+        <span class="nuoji-drag-hint" aria-hidden="true">拖动 · 点摸摸 · 长按报数</span>
     `;
 
     document.body.append(root);
@@ -446,6 +453,34 @@ function bindSettingsPreviewLayer() {
 }
 
 function bindSettingsControls() {
+    const sceneSelect = document.getElementById('nuoji-bubble-scene');
+    const editor = document.getElementById('nuoji-bubble-lines');
+    if (sceneSelect && editor) {
+        for (const [key, scene] of Object.entries(SCENES)) {
+            const option = document.createElement('option');
+            option.value = key;
+            option.textContent = scene.label;
+            sceneSelect.append(option);
+        }
+        const refreshEditor = () => { editor.value = sceneLines(settings.customBubbles, sceneSelect.value).join('\n'); };
+        refreshEditor();
+        on(sceneSelect, 'change', refreshEditor);
+        on(editor, 'input', () => {
+            settings.customBubbles[sceneSelect.value] = editor.value.slice(0, 7500);
+            saveSettings();
+        });
+        on(document.getElementById('nuoji-bubble-reset'), 'click', () => {
+            delete settings.customBubbles[sceneSelect.value];
+            refreshEditor();
+            saveSettings();
+        });
+        on(document.getElementById('nuoji-bubble-preview'), 'click', () => {
+            reportUntil = 0;
+            showBubble(companion.say(sceneSelect.value), 10000, true);
+        });
+        on(document.getElementById('nuoji-report'), 'click', showCompanionReport);
+    }
+
     const enabled = document.getElementById('nuoji-enabled');
     const scale = document.getElementById('nuoji-scale');
     const opacity = document.getElementById('nuoji-opacity');
@@ -493,6 +528,7 @@ function bindSettingsControls() {
         on(showBubble, 'change', (event) => {
             settings.showBubble = event.currentTarget.checked;
             if (!settings.showBubble) {
+                reportUntil = 0;
                 hideBubble();
             } else if (isGenerating) {
                 showBubble('让我想想…', 0);
@@ -599,6 +635,7 @@ function applyVisualSettings({ reposition = false } = {}) {
             scheduleAutoWalk();
         }
     } else {
+        reportUntil = 0;
         renderer?.stop();
         clearPoseTimer();
         cancelAutoWalk({ settle: false });
@@ -667,6 +704,7 @@ function setPixelPosition(left, top) {
     const bounds = movementBounds();
     ui.root.style.left = `${clamp(left, bounds.minimumLeft, bounds.maximumLeft)}px`;
     ui.root.style.top = `${clamp(top, bounds.minimumTop, bounds.maximumTop)}px`;
+    if (ui.bubble.classList.contains('is-visible')) positionBubble();
 }
 
 function applyStoredPosition() {
@@ -833,10 +871,11 @@ function scheduleLongPress() {
 
         drag.longPress = true;
         transitionTo(PET_STATES.PETTING, {
-            bubble: '呼噜呼噜呼噜～',
+            duration: 1800,
             priority: 55,
             force: true,
         });
+        showCompanionReport();
     }, LONG_PRESS_DURATION);
 }
 
@@ -943,7 +982,8 @@ function handlePetKeydown(event) {
     }
 
     event.preventDefault();
-    petNuoji();
+    if (event.shiftKey) showCompanionReport();
+    else petNuoji();
 }
 
 function petNuoji() {
@@ -1194,13 +1234,50 @@ function returnToAmbient() {
         if (renderer?.currentForm(performance.now()) === 'ball') {
             renderer.setForm('sitting');
         }
-        hideBubble();
+        if (!bubbleTimer) hideBubble();
         scheduleAutoLie();
         scheduleAutoWalk();
     }
 }
 
-function showBubble(message, duration = 1500) {
+const bubbleScenes = {
+    '小狐狸，我来啦～': 'greeting', '小狐狸回来啦！': 'greeting', '我回来啦～': 'greeting',
+    '我在看你写～': 'typing', '趴一会儿陪你～': 'idle', '嗯嗯，我在听': 'listening', '让我想想…': 'thinking', '这次想得久哦～': 'thinking', '还在想呢…': 'thinking',
+    '回信来啦！': 'reply', '好耶！': 'reply', '我也跟过来啦！': 'chat',
+    '呼噜呼噜～': 'petting', '蹭蹭你，再蹭一下～': 'nuzzling',
+    '陪着你呀': 'idle', '困嘟嘟…': 'sleeping', '欸？': 'confused',
+};
+
+function positionBubble() {
+    if (!ui?.bubble) return;
+    const pet = ui.root.getBoundingClientRect();
+    ui.bubble.style.maxWidth = `${Math.min(260, Math.max(80, viewportBox().width - 32))}px`;
+    const width = ui.bubble.offsetWidth;
+    const height = ui.bubble.offsetHeight;
+    const viewport = viewportBox();
+    const viewportWidth = viewport.width;
+    const viewportHeight = viewport.height;
+    ui.bubble.style.left = `${clamp(pet.left + pet.width / 2 - width / 2, viewport.left + 8, Math.max(viewport.left + 8, viewport.left + viewportWidth - width - 8)) - pet.left}px`;
+    const above = pet.top + pet.height * 0.13 - height - 10;
+    ui.bubble.style.top = `${clamp(above < viewport.top + 8 ? pet.top + pet.height * 0.7 : above, viewport.top + 8, Math.max(viewport.top + 8, viewport.top + viewportHeight - height - 8)) - pet.top}px`;
+}
+
+function showCompanionReport() {
+    if (!settings?.enabled) return;
+    reportUntil = 0;
+    showBubble(companion.say('report'), 16000, true);
+    reportUntil = Date.now() + 16000;
+    window.clearTimeout(bubbleTimer);
+    bubbleTimer = window.setTimeout(() => {
+        reportUntil = 0;
+        hideBubble();
+        if (isGenerating) showBubble(thinkingCompanionMessage, 0);
+    }, 16000);
+}
+
+function showBubble(message, duration = 1500, literal = false) {
+    if (Date.now() < reportUntil) return;
+    if (!literal && companion && bubbleScenes[message]) message = companion.say(bubbleScenes[message]);
     if (!ui?.bubble || !settings.showBubble || !message) {
         return;
     }
@@ -1209,12 +1286,14 @@ function showBubble(message, duration = 1500) {
     bubbleTimer = undefined;
     ui.bubble.textContent = message;
     ui.bubble.classList.add('is-visible');
+    positionBubble();
     if (Number.isFinite(duration) && duration > 0) {
-        bubbleTimer = window.setTimeout(hideBubble, duration);
+        bubbleTimer = window.setTimeout(hideBubble, Math.max(duration, Math.min(message.length * 100, 16000)));
     }
 }
 
 function hideBubble() {
+    if (Date.now() < reportUntil) return;
     window.clearTimeout(bubbleTimer);
     bubbleTimer = undefined;
     ui?.bubble.classList.remove('is-visible');
@@ -1384,6 +1463,8 @@ function bindSillyTavernEvents() {
     });
 
     listen('GENERATION_STARTED', (type, _args, dryRun) => {
+        if (settings.enabled) companion.start(type, dryRun);
+        else companion.baseline();
         if (dryRun || type === 'quiet') {
             return; // token counting / background prompts from other extensions
         }
@@ -1406,6 +1487,7 @@ function bindSillyTavernEvents() {
     });
 
     listen('MESSAGE_RECEIVED', (_messageId, type) => {
+        if (settings.enabled) companion.receive(_messageId, type);
         if (type === 'quiet' || !isGenerating && !generationEndTimer && !awaitingLateReply) {
             return;
         }
@@ -1457,6 +1539,8 @@ function bindSillyTavernEvents() {
     });
 
     listen('CHAT_CHANGED', () => {
+        companion.baseline();
+        reportUntil = 0;
         clearTypingAttention();
         clearThinkingCompanionTimers();
         clearGenerationWatchdog();
@@ -1471,6 +1555,7 @@ function bindSillyTavernEvents() {
 
 function bindViewportEvents() {
     const scheduleReposition = () => {
+        window.requestAnimationFrame(positionBubble);
         window.cancelAnimationFrame(positionFrame);
         positionFrame = window.requestAnimationFrame(applyStoredPosition);
         scheduleSettingsPreviewLayer();
@@ -1537,6 +1622,8 @@ export function destroy() {
     context = undefined;
     coreApi = undefined;
     settings = undefined;
+    companion = undefined;
+    reportUntil = 0;
     renderer = undefined;
     ui = undefined;
     initializePromise = undefined;
@@ -1589,6 +1676,7 @@ async function initialize() {
         context = SillyTavern.getContext();
         coreApi = await loadSillyTavernCoreApi();
         settings = getSettings();
+        companion = new Companion(settings, () => SillyTavern.getContext(), saveSettings);
         ui = createPetUi();
         renderer = new NuojiRenderer(ui.canvas);
         renderer.setReducedMotion(settings.reducedMotion);
@@ -1611,9 +1699,11 @@ async function initialize() {
             force: true,
         });
 
-        // A tiny debug/integration surface for future affection and feeding modules.
+        // Companion and animation integration surface.
         publicApi = Object.freeze({
             states: PET_STATES,
+            report: showCompanionReport,
+            companionStatus: () => companion?.values(),
             destroy,
             status() {
                 return Object.freeze({

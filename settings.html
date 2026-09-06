@@ -52,6 +52,22 @@
                 糯叽走两步
             </button>
 
+            <details class="nuoji-companion-settings" open>
+                <summary>小气泡与陪伴</summary>
+                <p>长按糯叽，就能听她报时间和今天的聊天统计。</p>
+                <button id="nuoji-report" class="menu_button" type="button">听听今日播报</button>
+                <label for="nuoji-bubble-scene">选择说话场景</label>
+                <select id="nuoji-bubble-scene" class="text_pole"></select>
+                <label for="nuoji-bubble-lines">每行一句，糯叽随机说（最多 30 句，每句 240 字）</label>
+                <textarea id="nuoji-bubble-lines" class="text_pole" rows="5" maxlength="7500" placeholder="写下你想听糯叽说的话"></textarea>
+                <small>自动保存；留空使用默认台词。可用：{时间}、{时段}、{角色名}、{今日卡数}、{今日层数}、{当前楼层}。</small>
+                <div class="nuoji-preview-actions">
+                    <button id="nuoji-bubble-preview" class="menu_button" type="button">预览这句</button>
+                    <button id="nuoji-bubble-reset" class="menu_button" type="button">恢复此场景默认</button>
+                </div>
+                <p class="nuoji-count-note">按设备当地时间每日归零，从启用后开始记录。今日层数只记新收到的角色回复；重生成、续写、切换候选和翻阅旧聊天不加数。卡数按有新回复的角色去重。当前楼层是本聊天角色回复总数（含开场白）。关闭糯叽时暂停统计。</p>
+            </details>
+
             <div class="nuoji-preview-title">戳戳看糯叽的动作</div>
             <div class="nuoji-preview-actions">
                 <button class="menu_button" type="button" data-nuoji-preview="idle">陪伴</button>
@@ -65,7 +81,7 @@
                 <button class="menu_button" type="button" data-nuoji-preview="wave">歪头打招呼</button>
             </div>
 
-            <p class="nuoji-settings-footer">GPT × Ripple 一起搓的，不许喂成可露丽那么胖。</p>
+            <p class="nuoji-settings-footer">GPT × Ripple 一起搓的，猫猫陪你把故事慢慢写下去。</p>
         </div>
     </div>
 </div>

@@ -69,7 +69,8 @@ body:has(#nuoji-pet-root.is-dragging) {
     z-index: 2;
     left: 50%;
     top: 13%;
-    max-width: min(180px, 72vw);
+    width: max-content;
+    max-width: min(260px, calc(100vw - 32px));
     padding: 7px 11px;
     border: 1px solid rgba(130, 142, 154, 0.34);
     border-radius: 14px 14px 14px 5px;
@@ -80,10 +81,11 @@ body:has(#nuoji-pet-root.is-dragging) {
     font: 600 12px/1.35 system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
     letter-spacing: 0.01em;
     text-align: center;
-    white-space: nowrap;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
     opacity: 0;
     pointer-events: none;
-    transform: translate(-50%, -118%) scale(0.88);
+    transform: scale(0.98);
     transform-origin: 25% 100%;
     transition: opacity 150ms ease, transform 170ms cubic-bezier(0.2, 0.75, 0.25, 1.2);
 }
@@ -103,7 +105,7 @@ body:has(#nuoji-pet-root.is-dragging) {
 
 .nuoji-speech.is-visible {
     opacity: 1;
-    transform: translate(-50%, -118%) scale(1);
+    transform: scale(1);
 }
 
 .nuoji-drag-hint {
@@ -266,3 +268,9 @@ body:has(#nuoji-pet-root.is-dragging) {
         transition: none;
     }
 }
+
+.nuoji-companion-settings { margin: 14px 0; }
+.nuoji-companion-settings summary { cursor: pointer; font-weight: 600; }
+.nuoji-companion-settings label { display: block; margin-top: 10px; }
+.nuoji-companion-settings textarea, .nuoji-companion-settings select { width: 100%; box-sizing: border-box; }
+.nuoji-companion-settings small, .nuoji-count-note { font-size: 12px; line-height: 1.6; opacity: .85; }
