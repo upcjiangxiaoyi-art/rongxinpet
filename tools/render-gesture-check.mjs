@@ -6,9 +6,9 @@ const root=new URL('../',import.meta.url),out=process.argv[2];if(!out)throw new 
 globalThis.document={createElement:()=>C(1,1)};
 const url=new URL('pet-renderer.js',root),source=fs.readFileSync(url,'utf8').replaceAll('import.meta.url',JSON.stringify(url.href));
 const mod=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
-const r=Object.create(mod.NuojiRenderer.prototype);
+const r=Object.create(mod.RongxinRenderer.prototype);
 Object.assign(r,{state:'idle',stateStartedAt:0,reducedMotion:false,pulseUntil:0,formTransitionFold:0,walkReady:false,walkLayersReady:false,walkDirection:-1,layersReady:true,skinReady:true,closedEyesReady:true,lyingReady:false,ballReady:false,layerImages:{}});
-const read=async name=>loadImage(new URL('assets/nuoji-'+name+'.png',root).pathname);
+const read=async name=>loadImage(new URL('assets/rongxin-'+name+'.png',root).pathname);
 for(const [key,name]of Object.entries({body:'body-v3',tail:'tail-v1',underpaint:'underpaint-v1',leftEar:'ear-left-v2',rightEar:'ear-right-v2'}))r.layerImages[key]=await read(name);
 r.skinImage=await read('base-v1');r.closedEyesImage=await read('closed-eyes-v2');r.winkImage=r.createWinkSkin(r.closedEyesImage);r.currentFormWeights=()=>({sitting:1,lying:0,ball:0,walking:0});
 function frame(state,ms,size=500){r.state=state;const c=C(size,size),ctx=c.getContext('2d');ctx.scale(size/500,size/500);ctx.fillStyle='#343b45';ctx.fillRect(0,0,500,500);r.drawPaintedSkin(ctx,ms);return c;}

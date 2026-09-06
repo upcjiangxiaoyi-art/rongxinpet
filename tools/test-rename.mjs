@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+const code=await readFile(new URL('../legacy-compat.js',import.meta.url),'utf8');
+const {migrateLegacySettings,LEGACY_SETTINGS_KEY}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const original={scale:40,opacity:70,position:{x:.3,y:.7},companionMode:'quiet',customBubbles:{petting:'摸摸'},cardBubbles:{'card:a.png':{chat:'欢迎回来'}},companionDay:{date:'2026-09-06',cards:['a'],replies:['r1']}};
+const settings={[LEGACY_SETTINGS_KEY]:structuredClone(original)};
+assert.equal(migrateLegacySettings(settings,'rongxin_pet'),true);
+assert.deepEqual(settings.rongxin_pet,original,'all preferences, per-card copy and counts retained');
+assert.notEqual(settings.rongxin_pet,settings[LEGACY_SETTINGS_KEY],'rollback snapshot retained independently');
+settings.rongxin_pet.scale=50;
+assert.equal(migrateLegacySettings(settings,'rongxin_pet'),false);
+assert.equal(settings.rongxin_pet.scale,50,'do not overwrite new settings on next load');
+assert.equal(settings[LEGACY_SETTINGS_KEY].scale,40);
+assert.equal(migrateLegacySettings({},'rongxin_pet'),false,'fresh installation has no migration');
+console.log('PASS: legacy settings migrate once, retain preferences and counts, preserve rollback snapshot.');

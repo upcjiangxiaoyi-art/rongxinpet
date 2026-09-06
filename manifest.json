@@ -1,10 +1,10 @@
 {
-    "display_name": "糯叽桌宠 Nuoji Pet",
+    "display_name": "绒信桌宠 Rongxin Pet",
     "loading_order": 20,
     "js": "index.js",
     "css": "style.css",
     "author": "GPT × Ripple",
-    "version": "0.19.2",
+    "version": "0.20.0",
     "auto_update": false,
     "hooks": {
         "disable": "onDisable"

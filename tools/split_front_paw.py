@@ -44,12 +44,12 @@ def trim_cap(leg, source, y_trim, grow=5, feather=6, blend=14):
     return out
 
 
-hind = widen_rows(load('nuoji-walk-leg-hind-near-v4.png'), 0, 1.08)
-hind = trim_cap(hind, 'nuoji-walk-leg-hind-near-v2.png', y_trim=735)
-save(hind, 'nuoji-walk-leg-hind-near-v5.png')
+hind = widen_rows(load('rongxin-walk-leg-hind-near-v4.png'), 0, 1.08)
+hind = trim_cap(hind, 'rongxin-walk-leg-hind-near-v2.png', y_trim=735)
+save(hind, 'rongxin-walk-leg-hind-near-v5.png')
 
-front = widen_rows(load('nuoji-walk-leg-front-near-v4.png'), 0, 1.08)
-front = trim_cap(front, 'nuoji-walk-leg-front-near-v2.png', y_trim=738)
+front = widen_rows(load('rongxin-walk-leg-front-near-v4.png'), 0, 1.08)
+front = trim_cap(front, 'rongxin-walk-leg-front-near-v2.png', y_trim=738)
 leg = front.copy()
 paw = front.copy()
 h = front.shape[0]
@@ -62,5 +62,5 @@ for y in range(h):
     rise = (WRIST_Y - 4) - y
     if rise > 0:
         paw[y, :, 3] *= max(0.0, 1 - rise / FEATHER)
-save(leg, 'nuoji-walk-leg-front-near-v5.png')
-save(paw, 'nuoji-walk-paw-front-near-v1.png')
+save(leg, 'rongxin-walk-leg-front-near-v5.png')
+save(paw, 'rongxin-walk-paw-front-near-v1.png')

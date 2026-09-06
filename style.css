@@ -1,19 +1,19 @@
-#nuoji-pet-root {
-    --nuoji-scale: 1;
-    --nuoji-opacity: 1;
-    --nuoji-safe-top: env(safe-area-inset-top, 0px);
-    --nuoji-safe-right: env(safe-area-inset-right, 0px);
-    --nuoji-safe-bottom: env(safe-area-inset-bottom, 0px);
-    --nuoji-safe-left: env(safe-area-inset-left, 0px);
+#rongxin-pet-root {
+    --rongxin-scale: 1;
+    --rongxin-opacity: 1;
+    --rongxin-safe-top: env(safe-area-inset-top, 0px);
+    --rongxin-safe-right: env(safe-area-inset-right, 0px);
+    --rongxin-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --rongxin-safe-left: env(safe-area-inset-left, 0px);
     position: fixed;
     z-index: 3000;
-    width: calc(202px * var(--nuoji-scale));
-    height: calc(202px * var(--nuoji-scale));
+    width: calc(202px * var(--rongxin-scale));
+    height: calc(202px * var(--rongxin-scale));
     margin: 0;
     padding: 0;
     border: 0;
     outline: none;
-    opacity: var(--nuoji-opacity);
+    opacity: var(--rongxin-opacity);
     cursor: grab;
     /* JavaScript claims painted pixels only; transparent corners stay click-through. */
     pointer-events: none;
@@ -28,43 +28,43 @@
     transition: opacity 160ms ease;
 }
 
-#nuoji-pet-root.is-disabled {
+#rongxin-pet-root.is-disabled {
     display: none;
 }
 
-#nuoji-pet-root.is-settings-preview {
-    /* Only Nuoji's own open settings panel may temporarily lift her over the mobile drawer. */
+#rongxin-pet-root.is-settings-preview {
+    /* Only Rongxin's own open settings panel may temporarily lift her over the mobile drawer. */
     z-index: 3006;
 }
 
-#nuoji-pet-root.is-pressed,
-#nuoji-pet-root.is-dragging {
+#rongxin-pet-root.is-pressed,
+#rongxin-pet-root.is-dragging {
     cursor: grabbing;
 }
 
-body:has(#nuoji-pet-root.is-hover) {
+body:has(#rongxin-pet-root.is-hover) {
     cursor: grab;
 }
 
-body:has(#nuoji-pet-root.is-dragging) {
+body:has(#rongxin-pet-root.is-dragging) {
     cursor: grabbing;
 }
 
-#nuoji-pet-root:focus-visible {
+#rongxin-pet-root:focus-visible {
     border-radius: 42%;
     outline: 3px solid #d7a65b;
     outline: 3px solid color-mix(in srgb, #d7a65b 82%, white);
     outline-offset: 2px;
 }
 
-.nuoji-canvas {
+.rongxin-canvas {
     display: block;
     width: 100%;
     height: 100%;
     pointer-events: none;
 }
 
-.nuoji-speech {
+.rongxin-speech {
     position: absolute;
     z-index: 2;
     left: 50%;
@@ -91,10 +91,10 @@ body:has(#nuoji-pet-root.is-dragging) {
     transition: opacity 150ms ease, transform 170ms cubic-bezier(0.2, 0.75, 0.25, 1.2);
 }
 
-.nuoji-speech::after {
+.rongxin-speech::after {
     content: "";
     position: absolute;
-    left: var(--nuoji-tail-x, 19px);
+    left: var(--rongxin-tail-x, 19px);
     bottom: -6px;
     width: 11px;
     height: 11px;
@@ -104,12 +104,12 @@ body:has(#nuoji-pet-root.is-dragging) {
     transform: rotate(45deg);
 }
 
-.nuoji-speech.is-visible {
+.rongxin-speech.is-visible {
     opacity: 1;
     transform: scale(1);
 }
 
-.nuoji-drag-hint {
+.rongxin-drag-hint {
     position: absolute;
     left: 50%;
     bottom: 2px;
@@ -125,59 +125,59 @@ body:has(#nuoji-pet-root.is-dragging) {
     transition: opacity 150ms ease, transform 150ms ease;
 }
 
-#nuoji-pet-root.is-hover .nuoji-drag-hint,
-#nuoji-pet-root:focus-visible .nuoji-drag-hint,
-#nuoji-pet-root.is-dragging .nuoji-drag-hint {
+#rongxin-pet-root.is-hover .rongxin-drag-hint,
+#rongxin-pet-root:focus-visible .rongxin-drag-hint,
+#rongxin-pet-root.is-dragging .rongxin-drag-hint {
     opacity: 0.92;
     transform: translate(-50%, 0);
 }
 
-.nuoji-settings .inline-drawer-content {
+.rongxin-settings .inline-drawer-content {
     padding-bottom: 10px;
 }
 
-.nuoji-settings-grid {
+.rongxin-settings-grid {
     display: grid;
     gap: 12px;
     margin: 8px 0 12px;
 }
 
-.nuoji-setting-row {
+.rongxin-setting-row {
     display: grid;
     grid-template-columns: minmax(78px, auto) 1fr 46px;
     gap: 10px;
     align-items: center;
 }
 
-.nuoji-setting-row label {
+.rongxin-setting-row label {
     margin: 0;
 }
 
-.nuoji-setting-row output {
+.rongxin-setting-row output {
     color: var(--SmartThemeBodyColor, inherit);
     font-variant-numeric: tabular-nums;
     text-align: right;
     opacity: 0.8;
 }
 
-.nuoji-settings input[type="range"] {
+.rongxin-settings input[type="range"] {
     min-width: 90px;
     margin: 0;
 }
 
-.nuoji-checkboxes {
+.rongxin-checkboxes {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px 14px;
     margin: 8px 0 14px;
 }
 
-.nuoji-checkboxes .checkbox_label {
+.rongxin-checkboxes .checkbox_label {
     align-items: center;
     margin: 0;
 }
 
-.nuoji-signal-row {
+.rongxin-signal-row {
     display: flex;
     align-items: center;
     gap: 7px;
@@ -191,23 +191,23 @@ body:has(#nuoji-pet-root.is-dragging) {
     opacity: 0.82;
 }
 
-.nuoji-signal-row .fa-signal {
+.rongxin-signal-row .fa-signal {
     color: #d7a65b;
 }
 
-.nuoji-preview-title {
+.rongxin-preview-title {
     margin: 12px 0 7px;
     font-size: 0.9em;
     opacity: 0.78;
 }
 
-.nuoji-preview-actions {
+.rongxin-preview-actions {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
 }
 
-#nuoji-settings .nuoji-preview-actions > .menu_button {
+#rongxin-settings .rongxin-preview-actions > .menu_button {
     display: inline-flex !important;
     width: 100% !important;
     min-width: 0 !important;
@@ -224,8 +224,8 @@ body:has(#nuoji-pet-root.is-dragging) {
     writing-mode: horizontal-tb !important;
 }
 
-#nuoji-settings #nuoji-reset-position,
-#nuoji-settings #nuoji-preview-walk {
+#rongxin-settings #rongxin-reset-position,
+#rongxin-settings #rongxin-preview-walk {
     display: inline-flex !important;
     width: auto !important;
     min-width: max-content !important;
@@ -240,7 +240,7 @@ body:has(#nuoji-pet-root.is-dragging) {
     writing-mode: horizontal-tb !important;
 }
 
-.nuoji-settings-footer {
+.rongxin-settings-footer {
     margin: 10px 0 0;
     font-size: 0.78em;
     text-align: center;
@@ -248,49 +248,49 @@ body:has(#nuoji-pet-root.is-dragging) {
 }
 
 @media (max-width: 700px), (pointer: coarse) {
-    #nuoji-pet-root {
-        width: calc(170px * var(--nuoji-scale));
-        height: calc(170px * var(--nuoji-scale));
+    #rongxin-pet-root {
+        width: calc(170px * var(--rongxin-scale));
+        height: calc(170px * var(--rongxin-scale));
     }
 
-    .nuoji-preview-actions {
+    .rongxin-preview-actions {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .nuoji-drag-hint {
+    .rongxin-drag-hint {
         display: none;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    #nuoji-pet-root,
-    .nuoji-speech,
-    .nuoji-drag-hint {
+    #rongxin-pet-root,
+    .rongxin-speech,
+    .rongxin-drag-hint {
         transition: none;
     }
 }
 
-.nuoji-companion-settings { margin: 14px 0; }
-.nuoji-companion-settings summary { cursor: pointer; font-weight: 600; }
-.nuoji-companion-settings label { display: block; margin-top: 10px; }
-.nuoji-companion-settings textarea, .nuoji-companion-settings select { width: 100%; box-sizing: border-box; }
-.nuoji-companion-settings small, .nuoji-count-note { font-size: 12px; line-height: 1.6; opacity: .85; }
+.rongxin-companion-settings { margin: 14px 0; }
+.rongxin-companion-settings summary { cursor: pointer; font-weight: 600; }
+.rongxin-companion-settings label { display: block; margin-top: 10px; }
+.rongxin-companion-settings textarea, .rongxin-companion-settings select { width: 100%; box-sizing: border-box; }
+.rongxin-companion-settings small, .rongxin-count-note { font-size: 12px; line-height: 1.6; opacity: .85; }
 
-.nuoji-speech[data-placement="below"]::after {
+.rongxin-speech[data-placement="below"]::after {
     top: -6px;
     bottom: auto;
     transform: rotate(225deg);
 }
-.nuoji-speech[data-placement="left"]::after {
+.rongxin-speech[data-placement="left"]::after {
     left: auto;
     right: -6px;
-    top: var(--nuoji-tail-y, 12px);
+    top: var(--rongxin-tail-y, 12px);
     bottom: auto;
     transform: rotate(-45deg);
 }
-.nuoji-speech[data-placement="right"]::after {
+.rongxin-speech[data-placement="right"]::after {
     left: -6px;
-    top: var(--nuoji-tail-y, 12px);
+    top: var(--rongxin-tail-y, 12px);
     bottom: auto;
     transform: rotate(135deg);
 }

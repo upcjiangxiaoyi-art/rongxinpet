@@ -1,5 +1,5 @@
 """Split the walking body plate into a tail-free body and a tail layer so the
-tail can sway about its root while Nuoji walks.
+tail can sway about its root while Rongxin walks.
 
 The cut runs down the rump. The tail keeps everything right of the cut and is
 fully opaque up to 20 px inside the body; the body keeps everything left of the
@@ -39,4 +39,4 @@ def split(src, body_dst, tail_dst):
 
 
 if __name__ == '__main__':
-    split('nuoji-walk-body-v2.png', 'nuoji-walk-body-v3.png', 'nuoji-walk-tail-v1.png')
+    split('rongxin-walk-body-v2.png', 'rongxin-walk-body-v3.png', 'rongxin-walk-tail-v1.png')

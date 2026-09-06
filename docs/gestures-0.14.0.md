@@ -4,8 +4,8 @@
 
 ## 改动
 
-- 身体使用 `assets/nuoji-body-v3.png`：补好耳根下面的头顶，删除旧耳尖。左右耳由原定妆图完整提取到 `nuoji-ear-left-v2.png` / `nuoji-ear-right-v2.png`，外侧毛缘跟随运动。
-- 挥爪底图升级为 `nuoji-wave-body-v2.png`，使用同一套修复后的头顶。新的路径避免复用旧 PNG 缓存。
+- 身体使用 `assets/rongxin-body-v3.png`：补好耳根下面的头顶，删除旧耳尖。左右耳由原定妆图完整提取到 `rongxin-ear-left-v2.png` / `rongxin-ear-right-v2.png`，外侧毛缘跟随运动。
+- 挥爪底图升级为 `rongxin-wave-body-v2.png`，使用同一套修复后的头顶。新的路径避免复用旧 PNG 缓存。
 - 挥爪总时长 3200 ms：抬爪约 950 ms；随后向外轻招两下；先收回胸前，再于最后 750 ms 放下。动作起止速度缓和，重复触发重新计时。
 - `getWavePose` 直接控制肘部和爪心的位置。抬爪时肘部略向外让位，爪子从身体前方收起；支撑爪不移动。
 - 站立纹理分为上下臂两块完整 PNG，不再逐条弯曲切片。折叠前臂使用专门绘制的蓬松短毛臂和松弛圆爪，按照相同肘部、爪心坐标配准，抬起时平滑过渡。上臂收进胸毛后隐藏，避免露出裁切边。
@@ -24,7 +24,7 @@
 
 离线构建需要 `@napi-rs/canvas`；运行 `node tools/build-ear-assets.mjs`，再运行 `node tools/build-wave-assets.mjs`。生成图只用于限定的头顶修补、前臂区域；完整生成角色没有替换原脸和身体。
 
-生成方式：内置图像生成工具。编辑目标均为 `assets/nuoji-base-v1.png`。原始生成图保存在项目的 `assets/nuoji-crown-repair-green-v1.png` 与 `assets/nuoji-raised-paw-green-v1.png`，不参与运行时绘制。
+生成方式：内置图像生成工具。编辑目标均为 `assets/rongxin-base-v1.png`。原始生成图保存在项目的 `assets/rongxin-crown-repair-green-v1.png` 与 `assets/rongxin-raised-paw-green-v1.png`，不参与运行时绘制。
 
 ### 头顶修补提示词
 

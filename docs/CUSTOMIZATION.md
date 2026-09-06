@@ -1,8 +1,8 @@
 # 替换形象与二改指南
 
-糯叽由 **Ripple × GPT** 共同制作，**GPT 主刀实现，Fable5.1 参与讨论**。项目采用 [MIT 许可证](../LICENSE)，允许替换宠物形象、修改代码、增加功能，以及分发修改版。
+绒信由 **Ripple × GPT** 共同制作，**GPT 主刀实现，Fable5.1 参与讨论**。项目采用 [MIT 许可证](../LICENSE)，允许替换宠物形象、修改代码、增加功能，以及分发修改版。
 
-这份指南对应 **0.19.1**。它说明当前代码的实际结构；目前没有一键上传皮肤功能，也没有可直接套用任意形象的通用骨骼配置。
+这份指南对应 **0.20.0**。它说明当前代码的实际结构；目前没有一键上传皮肤功能，也没有可直接套用任意形象的通用骨骼配置。
 
 ## 从哪里开始
 
@@ -18,7 +18,7 @@
 
 ## 换形象：不能只换一张主图
 
-坐姿、趴姿、团子和行走各有素材。仅替换 `nuoji-base-v1.png` 不会替换所有动作：分层绘制时仍会加载身体、耳朵和尾巴等图层。
+坐姿、趴姿、团子和行走各有素材。仅替换 `rongxin-base-v1.png` 不会替换所有动作：分层绘制时仍会加载身体、耳朵和尾巴等图层。
 
 若沿用原版比例和姿态，最容易从同尺寸、同位置的图层替换开始。身体轮廓、眼睛位置或四肢比例变化明显时，需要同步调整绘制坐标、旋转中心、闭眼遮罩和步态。
 
@@ -26,19 +26,19 @@
 
 | 素材（均在 `assets/`） | 尺寸（宽 × 高） | 用途 |
 | --- | --- | --- |
-| `nuoji-base-v1.png` | 1185 × 1327 | 整体主图／降级素材 |
-| `nuoji-body-v3.png` | 1185 × 1327 | 坐姿身体 |
-| `nuoji-tail-v1.png` | 1185 × 1327 | 坐姿尾巴 |
-| `nuoji-underpaint-v1.png` | 1185 × 1327 | 遮挡后方的补画图层 |
-| `nuoji-ear-left-v2.png`、`nuoji-ear-right-v2.png` | 各 1185 × 1327 | 左右耳朵 |
-| `nuoji-closed-eyes-v2.png` | 305 × 190 | 坐姿闭眼贴片 |
-| `nuoji-lying-v2.png`、`nuoji-lying-closed-eyes-v2.png` | 各 1402 × 1122 | 趴姿与趴姿闭眼层 |
-| `nuoji-ball-green-v1.png` | 1254 × 1254 | 团子母图，RGB 绿底 |
-| `nuoji-walk-green-v1.png` | 1402 × 1122 | 行走降级母图，RGB 绿底 |
-| `nuoji-walk-body-v3.png`、`nuoji-walk-tail-v1.png` | 各 1402 × 1122 | 行走身体与尾巴 |
-| `nuoji-walk-leg-front-near-v5.png`、`nuoji-walk-leg-hind-near-v5.png` | 各 1402 × 1122 | 行走近侧前后腿 |
-| `nuoji-walk-leg-front-far-v3.png`、`nuoji-walk-leg-hind-far-v3.png` | 各 1402 × 1122 | 行走远侧前后腿 |
-| `nuoji-walk-paw-front-near-v1.png` | 1402 × 1122 | 近侧前爪 |
+| `rongxin-base-v1.png` | 1185 × 1327 | 整体主图／降级素材 |
+| `rongxin-body-v3.png` | 1185 × 1327 | 坐姿身体 |
+| `rongxin-tail-v1.png` | 1185 × 1327 | 坐姿尾巴 |
+| `rongxin-underpaint-v1.png` | 1185 × 1327 | 遮挡后方的补画图层 |
+| `rongxin-ear-left-v2.png`、`rongxin-ear-right-v2.png` | 各 1185 × 1327 | 左右耳朵 |
+| `rongxin-closed-eyes-v2.png` | 305 × 190 | 坐姿闭眼贴片 |
+| `rongxin-lying-v2.png`、`rongxin-lying-closed-eyes-v2.png` | 各 1402 × 1122 | 趴姿与趴姿闭眼层 |
+| `rongxin-ball-green-v1.png` | 1254 × 1254 | 团子母图，RGB 绿底 |
+| `rongxin-walk-green-v1.png` | 1402 × 1122 | 行走降级母图，RGB 绿底 |
+| `rongxin-walk-body-v3.png`、`rongxin-walk-tail-v1.png` | 各 1402 × 1122 | 行走身体与尾巴 |
+| `rongxin-walk-leg-front-near-v5.png`、`rongxin-walk-leg-hind-near-v5.png` | 各 1402 × 1122 | 行走近侧前后腿 |
+| `rongxin-walk-leg-front-far-v3.png`、`rongxin-walk-leg-hind-far-v3.png` | 各 1402 × 1122 | 行走远侧前后腿 |
+| `rongxin-walk-paw-front-near-v1.png` | 1402 × 1122 | 近侧前爪 |
 
 除表中标注的两张 RGB 绿底母图，其余这些素材是 RGBA PNG。透明区域也参与图层对齐；请保留正确的透明通道。
 
@@ -52,22 +52,22 @@
 
 团子与行走绿底母图经过现有去绿逻辑处理。若想改为透明素材，先检查加载和去绿代码，再调整对应加载路径；不要只把透明图片改成同名文件就假定整个流程适配。
 
-图片入口、耳朵切片、眼睛遮罩和动作坐标都能在 `pet-renderer.js` 中找到。`tools/` 的素材处理脚本包含针对糯叽原画的裁切和像素参数，它们是实现参考，不是适配任意宠物的一键生成器。
+图片入口、耳朵切片、眼睛遮罩和动作坐标都能在 `pet-renderer.js` 中找到。`tools/` 的素材处理脚本包含针对绒信原画的裁切和像素参数，它们是实现参考，不是适配任意宠物的一键生成器。
 
 ## 增加功能与联动
 
 不修改渲染器也可以接入新事件。页面内已有接口：
 
 ```js
-window.NuojiPet?.react('happy', '找到啦！', 1800);
-window.NuojiPet?.nuzzle();
-window.NuojiPet?.report();
+window.RongxinPet?.react('happy', '找到啦！', 1800);
+window.RongxinPet?.nuzzle();
+window.RongxinPet?.report();
 ```
 
 也可发送事件：
 
 ```js
-window.dispatchEvent(new CustomEvent('nuoji:react', {
+window.dispatchEvent(new CustomEvent('rongxin:react', {
     detail: { state: 'happy', message: '找到啦！', duration: 1800 },
 }));
 ```
@@ -99,3 +99,8 @@ node tools/test-companion-controller.mjs
 保留 [LICENSE](../LICENSE) 要求的版权声明与许可文本。建议在自己的主页注明基于本项目、原版参与者及你新增或修改的内容，让使用者分清原版与衍生版；这项建议不增加 MIT 的许可条件。
 
 你新增的素材应有相应的使用和分发授权；如果它们使用其他许可证，请单独说明其范围。欢迎给自己的宠物取名字、写自己的台词，也欢迎把改进通过 Pull Request 分享回来。
+
+
+## 改名兼容
+
+公开接口使用 `window.RongxinPet` 和 `rongxin:react`。旧版设置会一次性迁移，历史接口通过 `legacy-compat.js` 继续兼容；新增功能请使用新名称。内部兼容标识不用于产品展示。素材文件前缀统一为 `rongxin-`，动画像素内容未因更名改变。

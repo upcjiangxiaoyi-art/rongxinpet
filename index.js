@@ -1,18 +1,19 @@
-import { NuojiRenderer, PET_STATES, getWalkStrideLength, NUZZLE_DURATION_MS, WAVE_DURATION_MS } from './pet-renderer.js';
+import { LEGACY_API_NAME, LEGACY_EVENT_NAME, LEGACY_ROOT_ID, LEGACY_PANEL_ID, migrateLegacySettings } from './legacy-compat.js';
+import { RongxinRenderer, PET_STATES, getWalkStrideLength, NUZZLE_DURATION_MS, WAVE_DURATION_MS } from './pet-renderer.js';
 
 import { Companion, SCENES, sceneLines, currentCard, migrateCompanionSettings } from './companion.js';
 
-const MODULE_NAME = 'nuoji_pet';
-const DEFAULT_EXTENSION_NAME = 'third-party/nuoji-pet';
+const MODULE_NAME = 'rongxin_pet';
+const DEFAULT_EXTENSION_NAME = 'third-party/rongxin-pet';
 const POSITION_MARGIN = 10;
 const DRAG_THRESHOLD = 7;
-// Fur tips are soft; only clearly painted pixels count as Nuoji, and the
+// Fur tips are soft; only clearly painted pixels count as Rongxin, and the
 // touch forgiveness ring is kept small so buttons beside her stay tappable.
 const HIT_ALPHA = 72;
 const HIT_RADIUS_TOUCH = 8;
 const HIT_RADIUS_MOUSE = 3;
 // Only swallow the browser's own synthetic click that follows a tap on
-// Nuoji; it lands within a few hundred ms at the same spot.
+// Rongxin; it lands within a few hundred ms at the same spot.
 const CLICK_GUARD_DURATION = 450;
 const CLICK_GUARD_RADIUS = 24;
 // A press that never receives pointerup/pointercancel (app switch, system
@@ -51,15 +52,15 @@ const DEFAULT_SETTINGS = Object.freeze({
 });
 
 const stateLabels = Object.freeze({
-    [PET_STATES.IDLE]: '糯叽正在陪你',
-    [PET_STATES.LISTENING]: '糯叽在听',
-    [PET_STATES.THINKING]: '糯叽在认真想',
-    [PET_STATES.HAPPY]: '糯叽很开心',
-    [PET_STATES.CONFUSED]: '糯叽有点迷糊',
-    [PET_STATES.PETTING]: '糯叽被摸摸了',
-    [PET_STATES.NUZZLING]: '糯叽在蹭蹭你',
-    [PET_STATES.SLEEPING]: '糯叽睡着了',
-    [PET_STATES.WAVE]: '糯叽在歪头打招呼',
+    [PET_STATES.IDLE]: '绒信正在陪你',
+    [PET_STATES.LISTENING]: '绒信在听',
+    [PET_STATES.THINKING]: '绒信在认真想',
+    [PET_STATES.HAPPY]: '绒信很开心',
+    [PET_STATES.CONFUSED]: '绒信有点迷糊',
+    [PET_STATES.PETTING]: '绒信被摸摸了',
+    [PET_STATES.NUZZLING]: '绒信在蹭蹭你',
+    [PET_STATES.SLEEPING]: '绒信睡着了',
+    [PET_STATES.WAVE]: '绒信在歪头打招呼',
 });
 
 let context;
@@ -165,6 +166,7 @@ function inferExtensionName() {
 function getSettings() {
     const { extensionSettings } = context;
 
+    const migratedLegacySettings = migrateLegacySettings(extensionSettings, MODULE_NAME);
     if (!extensionSettings[MODULE_NAME]) {
         extensionSettings[MODULE_NAME] = cloneDefaults();
     }
@@ -191,7 +193,7 @@ function getSettings() {
     stored.position.x = clamp(finiteNumber(stored.position.x, DEFAULT_SETTINGS.position.x), 0, 1);
     stored.position.y = clamp(finiteNumber(stored.position.y, DEFAULT_SETTINGS.position.y), 0, 1);
 
-    if (needsCompanionMigration) saveSettings();
+    if (needsCompanionMigration || migratedLegacySettings) saveSettings();
     return stored;
 }
 
@@ -200,29 +202,31 @@ function saveSettings() {
 }
 
 function createPetUi() {
-    const existing = document.getElementById('nuoji-pet-root');
+    const existing = document.getElementById('rongxin-pet-root');
     existing?.remove();
+    document.getElementById(LEGACY_ROOT_ID)?.remove();
+    document.getElementById(LEGACY_PANEL_ID)?.remove();
 
     const root = document.createElement('div');
-    root.id = 'nuoji-pet-root';
-    root.className = 'nuoji-pet-root';
+    root.id = 'rongxin-pet-root';
+    root.className = 'rongxin-pet-root';
     root.setAttribute('role', 'button');
     root.setAttribute('tabindex', '0');
     root.setAttribute('aria-label', stateLabels[PET_STATES.IDLE]);
     root.innerHTML = `
-        <div class="nuoji-speech" aria-live="polite"></div>
-        <canvas class="nuoji-canvas" width="500" height="500" aria-hidden="true"></canvas>
-        <span class="nuoji-drag-hint" aria-hidden="true">拖动 · 点摸摸 · 长按报数</span>
+        <div class="rongxin-speech" aria-live="polite"></div>
+        <canvas class="rongxin-canvas" width="500" height="500" aria-hidden="true"></canvas>
+        <span class="rongxin-drag-hint" aria-hidden="true">拖动 · 点摸摸 · 长按报数</span>
     `;
 
     document.body.append(root);
 
-    const canvas = root.querySelector('.nuoji-canvas');
-    const bubble = root.querySelector('.nuoji-speech');
-    const hint = root.querySelector('.nuoji-drag-hint');
+    const canvas = root.querySelector('.rongxin-canvas');
+    const bubble = root.querySelector('.rongxin-speech');
+    const hint = root.querySelector('.rongxin-drag-hint');
 
     // The root itself is click-through. A document-level capture listener only
-    // claims input that lands on Nuoji's painted pixels.
+    // claims input that lands on Rongxin's painted pixels.
     on(document, 'pointerdown', handlePointerDown, { capture: true });
     on(document, 'click', handleClickGuard, { capture: true });
     on(document, 'touchstart', handleTouchStartGuard, { capture: true, passive: false });
@@ -246,12 +250,12 @@ function createPetUi() {
 }
 
 /**
- * Nuoji's root is pointer-events: none, so the browser never reports her as
+ * Rongxin's root is pointer-events: none, so the browser never reports her as
  * the element under a point. Switch that on for one synchronous hit test to
  * learn whether anything (a drawer, a popup, a settings panel) is stacked
  * above her there. If it is, the tap belongs to that element, not to her.
  */
-function nuojiIsTopmostAt(clientX, clientY) {
+function rongxinIsTopmostAt(clientX, clientY) {
     if (typeof document.elementFromPoint !== 'function') {
         return true;
     }
@@ -272,7 +276,7 @@ function nuojiIsTopmostAt(clientX, clientY) {
     return !topmost || topmost === root || root.contains(topmost);
 }
 
-function hitsNuoji(clientX, clientY, pointerType = 'mouse') {
+function hitsRongxin(clientX, clientY, pointerType = 'mouse') {
     if (!ui?.root || !renderer?.ctx || !settings?.enabled) {
         return false;
     }
@@ -288,7 +292,7 @@ function hitsNuoji(clientX, clientY, pointerType = 'mouse') {
         return false;
     }
 
-    if (!nuojiIsTopmostAt(clientX, clientY)) {
+    if (!rongxinIsTopmostAt(clientX, clientY)) {
         return false;
     }
 
@@ -310,7 +314,7 @@ function hitsNuoji(clientX, clientY, pointerType = 'mouse') {
             }
         }
     } catch (error) {
-        console.warn('[Nuoji Pet] Pixel hit test failed; using the pet box.', error);
+        console.warn('[Rongxin Pet] Pixel hit test failed; using the pet box.', error);
         return true;
     }
 
@@ -328,7 +332,7 @@ function handleTouchStartGuard(event) {
 
 function handleTouchEndBackstop(event) {
     // Pointer events normally end the press. If the browser dropped that
-    // pointerup, the last finger leaving the screen still releases Nuoji.
+    // pointerup, the last finger leaving the screen still releases Rongxin.
     if (drag.active && event.touches.length === 0) {
         abandonPointerInteraction();
     }
@@ -357,7 +361,7 @@ function handleHoverHint(event) {
 
     window.cancelAnimationFrame(hoverFrame);
     hoverFrame = window.requestAnimationFrame(() => {
-        ui?.root.classList.toggle('is-hover', hitsNuoji(event.clientX, event.clientY, 'mouse'));
+        ui?.root.classList.toggle('is-hover', hitsRongxin(event.clientX, event.clientY, 'mouse'));
     });
 }
 
@@ -385,13 +389,13 @@ function handleClickGuard(event) {
 }
 
 async function createSettingsUi() {
-    if (document.getElementById('nuoji-settings')) {
+    if (document.getElementById('rongxin-settings')) {
         return;
     }
 
     const settingsHost = document.querySelector('#extensions_settings2, #extensions_settings');
     if (!settingsHost) {
-        console.warn('[Nuoji Pet] Could not find the extensions settings panel.');
+        console.warn('[Rongxin Pet] Could not find the extensions settings panel.');
         return;
     }
 
@@ -400,7 +404,7 @@ async function createSettingsUi() {
         const extensionName = inferExtensionName();
         html = await context.renderExtensionTemplateAsync(extensionName, 'settings');
     } catch (error) {
-        console.warn('[Nuoji Pet] Template renderer failed; using direct template fetch.', error);
+        console.warn('[Rongxin Pet] Template renderer failed; using direct template fetch.', error);
         const response = await fetch(new URL('./settings.html', import.meta.url));
         if (!response.ok) {
             throw new Error(`Unable to load settings.html (${response.status})`);
@@ -415,7 +419,7 @@ async function createSettingsUi() {
 }
 
 function settingsPanelIsVisible() {
-    const panel = document.getElementById('nuoji-settings');
+    const panel = document.getElementById('rongxin-settings');
     const content = panel?.querySelector('.inline-drawer-content');
     if (!content) {
         return false;
@@ -464,8 +468,8 @@ function bindSettingsPreviewLayer() {
 }
 
 function bindSettingsControls() {
-    const sceneSelect = document.getElementById('nuoji-bubble-scene');
-    const editor = document.getElementById('nuoji-bubble-lines');
+    const sceneSelect = document.getElementById('rongxin-bubble-scene');
+    const editor = document.getElementById('rongxin-bubble-lines');
     if (sceneSelect && editor) {
         for (const [key, scene] of Object.entries(SCENES)) {
             const option = document.createElement('option');
@@ -473,9 +477,9 @@ function bindSettingsControls() {
             option.textContent = scene.label;
             sceneSelect.append(option);
         }
-        const scope = document.getElementById('nuoji-bubble-scope');
-        const scopeLabel = document.getElementById('nuoji-bubble-scope-label');
-        const reset = document.getElementById('nuoji-bubble-reset');
+        const scope = document.getElementById('rongxin-bubble-scope');
+        const scopeLabel = document.getElementById('rongxin-bubble-scope-label');
+        const reset = document.getElementById('rongxin-bubble-reset');
         const target = (create = false) => {
             const card = currentCard(SillyTavern.getContext());
             if (scope.value !== 'card' || !card) return settings.customBubbles;
@@ -489,7 +493,7 @@ function bindSettingsControls() {
             scopeLabel.textContent = card ? `当前角色：${card.name}` : '未选择单人角色卡；群聊使用通用台词。';
             const specific = scope.value === 'card';
             editor.value = specific ? target()[sceneSelect.value] ?? '' : sceneLines(settings.customBubbles, sceneSelect.value).join('\n');
-            editor.placeholder = specific ? `留空继承通用台词：\n${sceneLines(settings.customBubbles, sceneSelect.value).join('\n')}` : '写下你想听糯叽说的话';
+            editor.placeholder = specific ? `留空继承通用台词：\n${sceneLines(settings.customBubbles, sceneSelect.value).join('\n')}` : '写下你想听绒信说的话';
             reset.textContent = specific ? '恢复此场景通用台词' : '恢复此场景默认';
         };
         refreshBubbleEditor();
@@ -504,14 +508,14 @@ function bindSettingsControls() {
             refreshBubbleEditor();
             saveSettings();
         });
-        on(document.getElementById('nuoji-bubble-preview'), 'click', () => {
+        on(document.getElementById('rongxin-bubble-preview'), 'click', () => {
             reportUntil = 0;
             showBubble(companion.say(sceneSelect.value, scope.value === 'card' ? 'current' : 'general'), 5000, true);
         });
-        on(document.getElementById('nuoji-report'), 'click', showCompanionReport);
+        on(document.getElementById('rongxin-report'), 'click', showCompanionReport);
     }
 
-    const mode = document.getElementById('nuoji-companion-mode');
+    const mode = document.getElementById('rongxin-companion-mode');
     if (mode) {
         mode.value = settings.companionMode;
         on(mode, 'change', () => {
@@ -522,14 +526,14 @@ function bindSettingsControls() {
             saveSettings();
         });
     }
-    const enabled = document.getElementById('nuoji-enabled');
-    const scale = document.getElementById('nuoji-scale');
-    const opacity = document.getElementById('nuoji-opacity');
-    const reducedMotion = document.getElementById('nuoji-reduced-motion');
-    const showBubble = document.getElementById('nuoji-show-bubble');
-    const autoWalk = document.getElementById('nuoji-auto-walk');
-    const resetPosition = document.getElementById('nuoji-reset-position');
-    const previewWalk = document.getElementById('nuoji-preview-walk');
+    const enabled = document.getElementById('rongxin-enabled');
+    const scale = document.getElementById('rongxin-scale');
+    const opacity = document.getElementById('rongxin-opacity');
+    const reducedMotion = document.getElementById('rongxin-reduced-motion');
+    const showBubble = document.getElementById('rongxin-show-bubble');
+    const autoWalk = document.getElementById('rongxin-auto-walk');
+    const resetPosition = document.getElementById('rongxin-reset-position');
+    const previewWalk = document.getElementById('rongxin-preview-walk');
 
     if (enabled) {
         on(enabled, 'change', (event) => {
@@ -612,9 +616,9 @@ function bindSettingsControls() {
         });
     }
 
-    document.querySelectorAll('[data-nuoji-preview]').forEach((button) => {
+    document.querySelectorAll('[data-rongxin-preview]').forEach((button) => {
         on(button, 'click', () => {
-            const state = button.dataset.nuojiPreview;
+            const state = button.dataset.rongxinPreview;
             if (!Object.values(PET_STATES).includes(state)) {
                 return;
             }
@@ -631,14 +635,14 @@ function bindSettingsControls() {
 }
 
 function syncSettingsControls() {
-    const enabled = document.getElementById('nuoji-enabled');
-    const scale = document.getElementById('nuoji-scale');
-    const scaleValue = document.getElementById('nuoji-scale-value');
-    const opacity = document.getElementById('nuoji-opacity');
-    const opacityValue = document.getElementById('nuoji-opacity-value');
-    const reducedMotion = document.getElementById('nuoji-reduced-motion');
-    const showBubble = document.getElementById('nuoji-show-bubble');
-    const autoWalk = document.getElementById('nuoji-auto-walk');
+    const enabled = document.getElementById('rongxin-enabled');
+    const scale = document.getElementById('rongxin-scale');
+    const scaleValue = document.getElementById('rongxin-scale-value');
+    const opacity = document.getElementById('rongxin-opacity');
+    const opacityValue = document.getElementById('rongxin-opacity-value');
+    const reducedMotion = document.getElementById('rongxin-reduced-motion');
+    const showBubble = document.getElementById('rongxin-show-bubble');
+    const autoWalk = document.getElementById('rongxin-auto-walk');
 
     if (enabled) enabled.checked = Boolean(settings.enabled);
     if (scale) scale.value = String(settings.scale);
@@ -686,8 +690,8 @@ function applyVisualSettings({ reposition = false } = {}) {
         hideBubble();
         window.clearTimeout(reactionTimer);
     }
-    ui.root.style.setProperty('--nuoji-scale', String(settings.scale / 100));
-    ui.root.style.setProperty('--nuoji-opacity', String(settings.opacity / 100));
+    ui.root.style.setProperty('--rongxin-scale', String(settings.scale / 100));
+    ui.root.style.setProperty('--rongxin-opacity', String(settings.opacity / 100));
     renderer?.setReducedMotion(settings.reducedMotion);
     scheduleSettingsPreviewLayer();
 
@@ -720,10 +724,10 @@ function movementBounds() {
     const viewport = viewportBox();
     const rect = ui.root.getBoundingClientRect();
     const styles = window.getComputedStyle(ui.root);
-    const safeTop = Number.parseFloat(styles.getPropertyValue('--nuoji-safe-top')) || 0;
-    const safeRight = Number.parseFloat(styles.getPropertyValue('--nuoji-safe-right')) || 0;
-    const safeBottom = Number.parseFloat(styles.getPropertyValue('--nuoji-safe-bottom')) || 0;
-    const safeLeft = Number.parseFloat(styles.getPropertyValue('--nuoji-safe-left')) || 0;
+    const safeTop = Number.parseFloat(styles.getPropertyValue('--rongxin-safe-top')) || 0;
+    const safeRight = Number.parseFloat(styles.getPropertyValue('--rongxin-safe-right')) || 0;
+    const safeBottom = Number.parseFloat(styles.getPropertyValue('--rongxin-safe-bottom')) || 0;
+    const safeLeft = Number.parseFloat(styles.getPropertyValue('--rongxin-safe-left')) || 0;
     const minimumLeft = viewport.left + POSITION_MARGIN + safeLeft;
     const minimumTop = viewport.top + POSITION_MARGIN + safeTop;
     const maximumLeft = Math.max(
@@ -785,13 +789,13 @@ function handlePointerDown(event) {
     if (
         drag.active
         || !event.isPrimary
-        || !hitsNuoji(event.clientX, event.clientY, event.pointerType || 'mouse')
+        || !hitsRongxin(event.clientX, event.clientY, event.pointerType || 'mouse')
     ) {
         return;
     }
 
     event.stopImmediatePropagation();
-    wakeNuoji();
+    wakeRongxin();
     const rect = ui.root.getBoundingClientRect();
     drag.active = true;
     drag.moved = false;
@@ -937,7 +941,7 @@ function registerTap(clientX, clientY) {
         && Math.hypot(clientX - pendingTap.x, clientY - pendingTap.y) <= DOUBLE_TAP_RADIUS
     ) {
         clearPendingTap();
-        doublePetNuoji();
+        doublePetRongxin();
         return;
     }
 
@@ -946,13 +950,13 @@ function registerTap(clientX, clientY) {
     tap.timer = window.setTimeout(() => {
         if (pendingTap === tap) {
             pendingTap = undefined;
-            petNuoji();
+            petRongxin();
         }
     }, DOUBLE_TAP_WINDOW);
     pendingTap = tap;
 }
 
-function doublePetNuoji() {
+function doublePetRongxin() {
     transitionTo(PET_STATES.NUZZLING, {
         duration: NUZZLE_DURATION_MS,
         bubble: '蹭蹭你，再蹭一下～',
@@ -966,7 +970,7 @@ function handleContextMenuGuard(event) {
     if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) {
         return;
     }
-    if (!drag.active && !hitsNuoji(event.clientX, event.clientY, 'touch')) {
+    if (!drag.active && !hitsRongxin(event.clientX, event.clientY, 'touch')) {
         return;
     }
     event.stopImmediatePropagation();
@@ -1029,10 +1033,10 @@ function handlePetKeydown(event) {
 
     event.preventDefault();
     if (event.shiftKey) showCompanionReport();
-    else petNuoji();
+    else petRongxin();
 }
 
-function petNuoji() {
+function petRongxin() {
     transitionTo(PET_STATES.PETTING, {
         duration: 1900,
         bubble: '呼噜呼噜～',
@@ -1065,7 +1069,7 @@ function cancelAutoWalk({ settle = true, remember = true } = {}) {
     }
 }
 
-function wakeNuoji() {
+function wakeRongxin() {
     clearPoseTimer();
     clearAutoWalkTimer();
     cancelAutoWalk({ settle: false });
@@ -1184,7 +1188,7 @@ function startAutoWalk(preferredDirection = 0, duration = WALK_DURATION, { annou
     renderer.setWalkProgress(0, strideLength);
     renderer.setState(PET_STATES.IDLE);
     renderer.setForm('walking');
-    ui.root.setAttribute('aria-label', '糯叽正在走过来陪你');
+    ui.root.setAttribute('aria-label', '绒信正在走过来陪你');
     if (announce) {
         showBubble('走两步陪你～', 1300, false, true);
     }
@@ -1248,7 +1252,7 @@ function transitionTo(state, {
         clearPoseTimer();
         renderer.setForm('lying');
     } else {
-        wakeNuoji();
+        wakeRongxin();
     }
     currentPriority = priority;
     priorityUntil = duration > 0 ? now + duration : Number.POSITIVE_INFINITY;
@@ -1342,7 +1346,7 @@ function positionBubble() {
     let top = headY - height - gap;
 
     if (top < topEdge) {
-        // At the top edge, move beside Nuoji rather than over her belly.
+        // At the top edge, move beside Rongxin rather than over her belly.
         const leftRoom = pet.left - gap - leftEdge;
         const rightRoom = rightEdge - pet.left - pet.width - gap;
         if (Math.max(leftRoom, rightRoom) >= 100) {
@@ -1362,9 +1366,9 @@ function positionBubble() {
     speech.style.left = `${left - pet.left}px`;
     speech.style.top = `${top - pet.top}px`;
     speech.dataset.placement = placement;
-    // Keep the tail pointing towards Nuoji after viewport-edge clamping.
-    speech.style.setProperty('--nuoji-tail-x', `${clamp(headX - left - 5, 12, Math.max(12, width - 23))}px`);
-    speech.style.setProperty('--nuoji-tail-y', `${clamp(headY - top - 5, 12, Math.max(12, height - 23))}px`);
+    // Keep the tail pointing towards Rongxin after viewport-edge clamping.
+    speech.style.setProperty('--rongxin-tail-x', `${clamp(headX - left - 5, 12, Math.max(12, width - 23))}px`);
+    speech.style.setProperty('--rongxin-tail-y', `${clamp(headY - top - 5, 12, Math.max(12, height - 23))}px`);
 }
 
 function showCompanionReport() {
@@ -1495,7 +1499,7 @@ function scheduleThinkingCompanionBubbles() {
 
 function setSignalStatus(message, source = '') {
     lastSignalStatus = message;
-    const status = document.getElementById('nuoji-signal-status');
+    const status = document.getElementById('rongxin-signal-status');
     if (status) {
         status.textContent = `联动状态：${message}`;
     }
@@ -1507,7 +1511,7 @@ function setSignalStatus(message, source = '') {
 function beginThinking(source = 'event', message = '让我想想…') {
     clearTypingAttention();
     clearPendingTap();
-    wakeNuoji();
+    wakeRongxin();
     isGenerating = true;
     awaitingLateReply = false;
     setSignalStatus('已收到发送，正在等回信', typeof source === 'string' ? source : 'event');
@@ -1682,7 +1686,7 @@ function bindViewportEvents() {
 }
 
 function bindCustomReactionEvent() {
-    on(window, 'nuoji:react', (event) => {
+    const react = (event) => {
         const state = event.detail?.state;
         if (!Object.values(PET_STATES).includes(state)) {
             return;
@@ -1694,7 +1698,9 @@ function bindCustomReactionEvent() {
             priority: 30,
             force: true,
         });
-    });
+    };
+    on(window, 'rongxin:react', react);
+    on(window, LEGACY_EVENT_NAME, react);
 }
 
 export function destroy() {
@@ -1702,7 +1708,7 @@ export function destroy() {
         try {
             cleanups.pop()();
         } catch (error) {
-            console.warn('[Nuoji Pet] Cleanup failed.', error);
+            console.warn('[Rongxin Pet] Cleanup failed.', error);
         }
     }
 
@@ -1727,11 +1733,13 @@ export function destroy() {
     cancelAutoWalk({ settle: false, remember: false });
     renderer?.destroy();
     ui?.root?.remove();
-    document.getElementById('nuoji-settings')?.remove();
+    document.getElementById('rongxin-settings')?.remove();
 
-    if (window.NuojiPet === publicApi) {
-        delete window.NuojiPet;
+    if (window.RongxinPet === publicApi) {
+        delete window.RongxinPet;
     }
+
+    if (window[LEGACY_API_NAME] === publicApi) delete window[LEGACY_API_NAME];
 
     context = undefined;
     coreApi = undefined;
@@ -1782,7 +1790,7 @@ async function initialize() {
     }
 
     initializePromise = (async () => {
-        const previousApi = window.NuojiPet;
+        const previousApi = window.RongxinPet ?? window[LEGACY_API_NAME];
         if (typeof previousApi?.destroy === 'function' && previousApi.destroy !== destroy) {
             previousApi.destroy();
         }
@@ -1795,7 +1803,7 @@ async function initialize() {
         settings = getSettings();
         companion = new Companion(settings, () => SillyTavern.getContext(), saveSettings);
         ui = createPetUi();
-        renderer = new NuojiRenderer(ui.canvas);
+        renderer = new RongxinRenderer(ui.canvas);
         renderer.setReducedMotion(settings.reducedMotion);
         renderer.start();
 
@@ -1832,12 +1840,12 @@ async function initialize() {
                 });
             },
             react(state, message = '', duration = state === PET_STATES.NUZZLING ? NUZZLE_DURATION_MS : 1800) {
-                window.dispatchEvent(new CustomEvent('nuoji:react', {
+                window.dispatchEvent(new CustomEvent('rongxin:react', {
                     detail: { state, message, duration },
                 }));
             },
             nuzzle() {
-                doublePetNuoji();
+                doublePetRongxin();
             },
             lieDown() {
                 clearPoseTimer();
@@ -1845,7 +1853,7 @@ async function initialize() {
                 showBubble('趴趴～', 1200, false, true);
             },
             sitUp() {
-                wakeNuoji();
+                wakeRongxin();
             },
             rollUp() {
                 clearPoseTimer();
@@ -1857,12 +1865,13 @@ async function initialize() {
                 return startAutoWalk(direction, duration, { announce: true });
             },
         });
-        window.NuojiPet = publicApi;
+        window.RongxinPet = publicApi;
+        window[LEGACY_API_NAME] = publicApi;
 
-        console.info('[Nuoji Pet] 糯叽已就位。');
+        console.info('[Rongxin Pet] 绒信已就位。');
     })().catch((error) => {
         destroy();
-        console.error('[Nuoji Pet] Initialization failed.', error);
+        console.error('[Rongxin Pet] Initialization failed.', error);
         throw error;
     });
 
@@ -1889,7 +1898,7 @@ function boot() {
             scheduleInitialize();
         }
     } catch (error) {
-        console.error('[Nuoji Pet] Could not attach to SillyTavern.', error);
+        console.error('[Rongxin Pet] Could not attach to SillyTavern.', error);
     }
 }
 

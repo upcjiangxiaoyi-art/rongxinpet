@@ -14,27 +14,27 @@ const DESIGN_SIZE = 500;
 // The pet is at most 303 CSS px wide. A 750 px backing store remains crisp at
 // that size while avoiding a 1000 x 1000 redraw on high-DPR iPhones.
 const MAX_PIXEL_RATIO = 1.5;
-const SKIN_URL = new URL('./assets/nuoji-base-v1.png', import.meta.url).href;
-const BODY_LAYER_URL = new URL('./assets/nuoji-body-v3.png?v=0.17.1', import.meta.url).href;
-const TAIL_LAYER_URL = new URL('./assets/nuoji-tail-v1.png', import.meta.url).href;
-const UNDERPAINT_LAYER_URL = new URL('./assets/nuoji-underpaint-v1.png', import.meta.url).href;
-const LEFT_EAR_LAYER_URL = new URL('./assets/nuoji-ear-left-v2.png', import.meta.url).href;
-const RIGHT_EAR_LAYER_URL = new URL('./assets/nuoji-ear-right-v2.png', import.meta.url).href;
-const CLOSED_EYES_URL = new URL('./assets/nuoji-closed-eyes-v2.png', import.meta.url).href;
-const LYING_SKIN_URL = new URL('./assets/nuoji-lying-v2.png', import.meta.url).href;
-const LYING_CLOSED_EYES_URL = new URL('./assets/nuoji-lying-closed-eyes-v2.png', import.meta.url).href;
-const BALL_GREEN_URL = new URL('./assets/nuoji-ball-green-v1.png', import.meta.url).href;
-const WALK_GREEN_URL = new URL('./assets/nuoji-walk-green-v1.png', import.meta.url).href;
+const SKIN_URL = new URL('./assets/rongxin-base-v1.png', import.meta.url).href;
+const BODY_LAYER_URL = new URL('./assets/rongxin-body-v3.png?v=0.17.1', import.meta.url).href;
+const TAIL_LAYER_URL = new URL('./assets/rongxin-tail-v1.png', import.meta.url).href;
+const UNDERPAINT_LAYER_URL = new URL('./assets/rongxin-underpaint-v1.png', import.meta.url).href;
+const LEFT_EAR_LAYER_URL = new URL('./assets/rongxin-ear-left-v2.png', import.meta.url).href;
+const RIGHT_EAR_LAYER_URL = new URL('./assets/rongxin-ear-right-v2.png', import.meta.url).href;
+const CLOSED_EYES_URL = new URL('./assets/rongxin-closed-eyes-v2.png', import.meta.url).href;
+const LYING_SKIN_URL = new URL('./assets/rongxin-lying-v2.png', import.meta.url).href;
+const LYING_CLOSED_EYES_URL = new URL('./assets/rongxin-lying-closed-eyes-v2.png', import.meta.url).href;
+const BALL_GREEN_URL = new URL('./assets/rongxin-ball-green-v1.png', import.meta.url).href;
+const WALK_GREEN_URL = new URL('./assets/rongxin-walk-green-v1.png', import.meta.url).href;
 const WALK_FORM_TRANSITION_MS = 190;
 const WALK_FORM_SWITCH_ALPHA = 0.12;
 const WALK_LAYER_URLS = Object.freeze({
-    body: new URL('./assets/nuoji-walk-body-v3.png', import.meta.url).href,
-    tail: new URL('./assets/nuoji-walk-tail-v1.png', import.meta.url).href,
-    frontNear: new URL('./assets/nuoji-walk-leg-front-near-v5.png', import.meta.url).href,
-    frontNearPaw: new URL('./assets/nuoji-walk-paw-front-near-v1.png', import.meta.url).href,
-    frontFar: new URL('./assets/nuoji-walk-leg-front-far-v3.png', import.meta.url).href,
-    hindNear: new URL('./assets/nuoji-walk-leg-hind-near-v5.png', import.meta.url).href,
-    hindFar: new URL('./assets/nuoji-walk-leg-hind-far-v3.png', import.meta.url).href,
+    body: new URL('./assets/rongxin-walk-body-v3.png', import.meta.url).href,
+    tail: new URL('./assets/rongxin-walk-tail-v1.png', import.meta.url).href,
+    frontNear: new URL('./assets/rongxin-walk-leg-front-near-v5.png', import.meta.url).href,
+    frontNearPaw: new URL('./assets/rongxin-walk-paw-front-near-v1.png', import.meta.url).href,
+    frontFar: new URL('./assets/rongxin-walk-leg-front-far-v3.png', import.meta.url).href,
+    hindNear: new URL('./assets/rongxin-walk-leg-hind-near-v5.png', import.meta.url).href,
+    hindFar: new URL('./assets/rongxin-walk-leg-hind-far-v3.png', import.meta.url).href,
 });
 const TAU = Math.PI * 2;
 // A relaxed feline walk is a four-beat lateral-sequence gait. Each paw spends
@@ -349,14 +349,14 @@ function drawHeart(ctx, x, y, size, color, rotation = 0) {
 }
 
 /**
- * Canvas renderer for Nuoji's painted skin and lightweight state animation.
+ * Canvas renderer for Rongxin's painted skin and lightweight state animation.
  * The original vector kitten remains available only as an emergency fallback
  * when the bundled transparent artwork cannot be loaded.
  */
-export class NuojiRenderer {
+export class RongxinRenderer {
     constructor(canvas) {
         if (!(canvas instanceof HTMLCanvasElement)) {
-            throw new TypeError('NuojiRenderer needs a canvas element.');
+            throw new TypeError('RongxinRenderer needs a canvas element.');
         }
 
         this.canvas = canvas;
@@ -436,7 +436,7 @@ export class NuojiRenderer {
             this.layersReady = !failed && Object.values(this.layerImages).every(Boolean);
             this.layersFailed = failed;
             if (failed) {
-                console.warn('[Nuoji Pet] Animated skin layers failed to load; keeping the still painted skin.');
+                console.warn('[Rongxin Pet] Animated skin layers failed to load; keeping the still painted skin.');
                 this.loadSkin();
             }
             this.draw(performance.now());
@@ -471,7 +471,7 @@ export class NuojiRenderer {
             this.skinImage = null;
             this.skinReady = false;
             this.skinFailed = true;
-            console.warn('[Nuoji Pet] Painted skin failed to load; using the emergency fallback.');
+            console.warn('[Rongxin Pet] Painted skin failed to load; using the emergency fallback.');
             this.draw(performance.now());
         }, { once: true });
         image.src = SKIN_URL;
@@ -489,7 +489,7 @@ export class NuojiRenderer {
         image.addEventListener('error', () => {
             this.closedEyesImage = null;
             this.closedEyesReady = false;
-            console.warn('[Nuoji Pet] Closed-eye skin failed to load; keeping Nuoji\'s eyes open.');
+            console.warn('[Rongxin Pet] Closed-eye skin failed to load; keeping Rongxin\'s eyes open.');
             this.draw(performance.now());
         }, { once: true });
         image.src = CLOSED_EYES_URL;
@@ -515,7 +515,7 @@ export class NuojiRenderer {
             this.lyingImage = null;
             this.lyingReady = false;
             this.lyingLoading = false;
-            console.warn('[Nuoji Pet] Lying pose failed to load; keeping the sitting pose.');
+            console.warn('[Rongxin Pet] Lying pose failed to load; keeping the sitting pose.');
         }, { once: true });
         image.src = LYING_SKIN_URL;
     }
@@ -537,7 +537,7 @@ export class NuojiRenderer {
             this.lyingClosedEyesImage = null;
             this.lyingClosedEyesReady = false;
             this.lyingClosedEyesLoading = false;
-            console.warn('[Nuoji Pet] Lying closed-eye layer failed to load; keeping the reclining eyes open.');
+            console.warn('[Rongxin Pet] Lying closed-eye layer failed to load; keeping the reclining eyes open.');
         }, { once: true });
         image.src = LYING_CLOSED_EYES_URL;
     }
@@ -562,7 +562,7 @@ export class NuojiRenderer {
             this.ballImage = null;
             this.ballReady = false;
             this.ballLoading = false;
-            console.warn('[Nuoji Pet] Ball pose failed to load; keeping the sitting pose.');
+            console.warn('[Rongxin Pet] Ball pose failed to load; keeping the sitting pose.');
         }, { once: true });
         image.src = BALL_GREEN_URL;
     }
@@ -589,7 +589,7 @@ export class NuojiRenderer {
                 this.draw(performance.now());
                 return;
             }
-            console.warn('[Nuoji Pet] Walking layers failed to load; using the still walking fallback.');
+            console.warn('[Rongxin Pet] Walking layers failed to load; using the still walking fallback.');
             this.loadWalkFallback();
         };
 
@@ -625,7 +625,7 @@ export class NuojiRenderer {
             this.walkImage = null;
             this.walkReady = false;
             this.walkLoading = false;
-            console.warn('[Nuoji Pet] Walking fallback failed to load; keeping the sitting pose.');
+            console.warn('[Rongxin Pet] Walking fallback failed to load; keeping the sitting pose.');
         }, { once: true });
         image.src = WALK_GREEN_URL;
     }
@@ -931,7 +931,7 @@ export class NuojiRenderer {
         this.drawShadow(ctx, bodyY);
         this.drawTail(ctx, seconds, still);
 
-        // Nuoji is fluffy, not round: keep a light cat-fox silhouette while the
+        // Rongxin is fluffy, not round: keep a light cat-fox silhouette while the
         // oversized tail stays gloriously plush behind her.
         ctx.save();
         ctx.translate(250, 270);
@@ -1670,7 +1670,7 @@ export class NuojiRenderer {
         }
         ctx.restore();
 
-        // Warm little moon tag: the only warm accent besides Nuoji's eyes.
+        // Warm little moon tag: the only warm accent besides Rongxin's eyes.
         ctx.save();
         ctx.strokeStyle = '#b78342';
         ctx.lineWidth = 5;

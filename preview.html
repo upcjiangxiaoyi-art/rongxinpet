@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>糯叽桌宠动作预览</title>
+    <title>绒信桌宠动作预览</title>
     <style>
         :root {
             color-scheme: light dark;
@@ -98,11 +98,11 @@
 </head>
 <body>
     <main>
-        <section class="stage" aria-label="糯叽动画预览">
-            <canvas id="nuoji-preview" width="500" height="500"></canvas>
+        <section class="stage" aria-label="绒信动画预览">
+            <canvas id="rongxin-preview" width="500" height="500"></canvas>
         </section>
         <section class="controls">
-            <h1>糯叽动作检查台</h1>
+            <h1>绒信动作检查台</h1>
             <p>这是独立预览，不需要启动 SillyTavern。“想一想”检查滚动团子，“困嘟嘟”检查趴姿，“向左走／向右走”会循环播放步态，可以暂停后拖动进度，检查腿根和脚掌。</p>
             <div class="buttons">
                 <button data-state="idle">陪伴</button>
@@ -133,10 +133,10 @@
     </main>
 
     <script type="module">
-        import { NuojiRenderer, PET_STATES, NUZZLE_DURATION_MS, WAVE_DURATION_MS } from './pet-renderer.js';
+        import { RongxinRenderer, PET_STATES, NUZZLE_DURATION_MS, WAVE_DURATION_MS } from './pet-renderer.js';
 
-        const canvas = document.getElementById('nuoji-preview');
-        const renderer = new NuojiRenderer(canvas);
+        const canvas = document.getElementById('rongxin-preview');
+        const renderer = new RongxinRenderer(canvas);
         renderer.start();
 
         let reactionTimer;
