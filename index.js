@@ -1,6 +1,6 @@
 import { NuojiRenderer, PET_STATES, getWalkStrideLength, NUZZLE_DURATION_MS, WAVE_DURATION_MS } from './pet-renderer.js';
 
-import { Companion, SCENES, sceneLines } from './companion.js';
+import { Companion, SCENES, sceneLines, currentCard, migrateCompanionSettings } from './companion.js';
 
 const MODULE_NAME = 'nuoji_pet';
 const DEFAULT_EXTENSION_NAME = 'third-party/nuoji-pet';
@@ -22,6 +22,7 @@ const DOUBLE_TAP_WINDOW = 320;
 const DOUBLE_TAP_RADIUS = 42;
 const LONG_PRESS_DURATION = 600;
 const REPORT_BUBBLE_DURATION = 5000;
+const AMBIENT_BUBBLE_INTERVAL = 10000;
 const TYPING_IDLE_DELAY = 3000;
 const THINKING_COMPANION_DELAY = 20000;
 const AUTO_LIE_DELAY = 28000;
@@ -41,6 +42,8 @@ const DEFAULT_SETTINGS = Object.freeze({
     showBubble: true,
     autoWalk: true,
     customBubbles: {},
+    cardBubbles: {},
+    companionMode: 'daily',
     position: {
         x: 0.82,
         y: 0.68,
@@ -64,6 +67,8 @@ let coreApi;
 let settings;
 let companion;
 let reportUntil = 0;
+let nextAmbientBubbleAt = 0;
+let refreshBubbleEditor;
 let renderer;
 let ui;
 let initializePromise;
@@ -172,16 +177,20 @@ function getSettings() {
 
     if (!stored.customBubbles || typeof stored.customBubbles !== 'object' || Array.isArray(stored.customBubbles)) stored.customBubbles = {};
 
+    const needsCompanionMigration = !stored.floorCopyMigrated;
+    migrateCompanionSettings(stored);
+
     stored.position = {
         ...DEFAULT_SETTINGS.position,
         ...(stored.position ?? {}),
     };
 
-    stored.scale = clamp(finiteNumber(stored.scale, DEFAULT_SETTINGS.scale), 70, 150);
+    stored.scale = clamp(finiteNumber(stored.scale, DEFAULT_SETTINGS.scale), 40, 150);
     stored.opacity = clamp(finiteNumber(stored.opacity, DEFAULT_SETTINGS.opacity), 40, 100);
     stored.position.x = clamp(finiteNumber(stored.position.x, DEFAULT_SETTINGS.position.x), 0, 1);
     stored.position.y = clamp(finiteNumber(stored.position.y, DEFAULT_SETTINGS.position.y), 0, 1);
 
+    if (needsCompanionMigration) saveSettings();
     return stored;
 }
 
@@ -463,25 +472,55 @@ function bindSettingsControls() {
             option.textContent = scene.label;
             sceneSelect.append(option);
         }
-        const refreshEditor = () => { editor.value = sceneLines(settings.customBubbles, sceneSelect.value).join('\n'); };
-        refreshEditor();
-        on(sceneSelect, 'change', refreshEditor);
+        const scope = document.getElementById('nuoji-bubble-scope');
+        const scopeLabel = document.getElementById('nuoji-bubble-scope-label');
+        const reset = document.getElementById('nuoji-bubble-reset');
+        const target = (create = false) => {
+            const card = currentCard(SillyTavern.getContext());
+            if (scope.value !== 'card' || !card) return settings.customBubbles;
+            if (create && !settings.cardBubbles[card.key]) settings.cardBubbles[card.key] = {};
+            return settings.cardBubbles[card.key] ?? {};
+        };
+        refreshBubbleEditor = () => {
+            const card = currentCard(SillyTavern.getContext());
+            scope.options[1].disabled = !card;
+            if (!card) scope.value = 'general';
+            scopeLabel.textContent = card ? `当前角色：${card.name}` : '未选择单人角色卡；群聊使用通用台词。';
+            const specific = scope.value === 'card';
+            editor.value = specific ? target()[sceneSelect.value] ?? '' : sceneLines(settings.customBubbles, sceneSelect.value).join('\n');
+            editor.placeholder = specific ? `留空继承通用台词：\n${sceneLines(settings.customBubbles, sceneSelect.value).join('\n')}` : '写下你想听糯叽说的话';
+            reset.textContent = specific ? '恢复此场景通用台词' : '恢复此场景默认';
+        };
+        refreshBubbleEditor();
+        on(sceneSelect, 'change', refreshBubbleEditor);
+        on(scope, 'change', refreshBubbleEditor);
         on(editor, 'input', () => {
-            settings.customBubbles[sceneSelect.value] = editor.value.slice(0, 7500);
+            target(true)[sceneSelect.value] = editor.value.slice(0, 7500);
             saveSettings();
         });
-        on(document.getElementById('nuoji-bubble-reset'), 'click', () => {
-            delete settings.customBubbles[sceneSelect.value];
-            refreshEditor();
+        on(reset, 'click', () => {
+            delete target()[sceneSelect.value];
+            refreshBubbleEditor();
             saveSettings();
         });
         on(document.getElementById('nuoji-bubble-preview'), 'click', () => {
             reportUntil = 0;
-            showBubble(companion.say(sceneSelect.value), 10000, true);
+            showBubble(companion.say(sceneSelect.value, scope.value === 'card' ? 'current' : 'general'), 5000, true);
         });
         on(document.getElementById('nuoji-report'), 'click', showCompanionReport);
     }
 
+    const mode = document.getElementById('nuoji-companion-mode');
+    if (mode) {
+        mode.value = settings.companionMode;
+        on(mode, 'change', () => {
+            settings.companionMode = mode.value === 'quiet' ? 'quiet' : 'daily';
+            reportUntil = 0;
+            hideBubble();
+            nextAmbientBubbleAt = 0;
+            saveSettings();
+        });
+    }
     const enabled = document.getElementById('nuoji-enabled');
     const scale = document.getElementById('nuoji-scale');
     const opacity = document.getElementById('nuoji-opacity');
@@ -501,7 +540,7 @@ function bindSettingsControls() {
 
     if (scale) {
         on(scale, 'input', (event) => {
-            settings.scale = clamp(Number(event.currentTarget.value), 70, 150);
+            settings.scale = clamp(Number(event.currentTarget.value), 40, 150);
             applyVisualSettings({ reposition: true });
             syncSettingsControls();
             saveSettings();
@@ -558,6 +597,7 @@ function bindSettingsControls() {
             transitionTo(PET_STATES.WAVE, {
                 duration: 1500,
                 bubble: '我回来啦～',
+                manual: true,
                 priority: 30,
                 force: true,
             });
@@ -581,6 +621,7 @@ function bindSettingsControls() {
             transitionTo(state, {
                 duration: state === PET_STATES.NUZZLING ? NUZZLE_DURATION_MS : state === PET_STATES.SLEEPING ? 3000 : 1800,
                 bubble: previewBubbleFor(state),
+                manual: true,
                 priority: 35,
                 force: true,
             });
@@ -779,6 +820,7 @@ function handlePointerMove(event) {
         ui.root.classList.add('is-dragging');
         transitionTo(PET_STATES.LISTENING, {
             bubble: '带我去哪呀？',
+            manual: true,
             priority: 45,
             force: true,
         });
@@ -812,6 +854,7 @@ function handlePointerUp(event) {
         transitionTo(PET_STATES.WAVE, {
             duration: 1100,
             bubble: '这里可以！',
+            manual: true,
             priority: 35,
             force: true,
         });
@@ -912,6 +955,7 @@ function doublePetNuoji() {
     transitionTo(PET_STATES.NUZZLING, {
         duration: NUZZLE_DURATION_MS,
         bubble: '蹭蹭你，再蹭一下～',
+        manual: true,
         priority: 48,
         force: true,
     });
@@ -991,6 +1035,7 @@ function petNuoji() {
     transitionTo(PET_STATES.PETTING, {
         duration: 1900,
         bubble: '呼噜呼噜～',
+        manual: true,
         priority: 40,
         force: true,
     });
@@ -1140,7 +1185,7 @@ function startAutoWalk(preferredDirection = 0, duration = WALK_DURATION, { annou
     renderer.setForm('walking');
     ui.root.setAttribute('aria-label', '糯叽正在走过来陪你');
     if (announce) {
-        showBubble('走两步陪你～', 1300);
+        showBubble('走两步陪你～', 1300, false, true);
     }
 
     const step = (now) => {
@@ -1167,7 +1212,7 @@ function startAutoWalk(preferredDirection = 0, duration = WALK_DURATION, { annou
         renderer.setState(PET_STATES.IDLE);
         ui.root.setAttribute('aria-label', stateLabels[PET_STATES.IDLE]);
         if (announce) {
-            showBubble('换个地方陪你～', 1200);
+            showBubble('换个地方陪你～', 1200, false, true);
         }
         scheduleAutoLie();
         scheduleAutoWalk();
@@ -1181,6 +1226,7 @@ function transitionTo(state, {
     bubble = '',
     priority = 0,
     force = false,
+    manual = false,
 } = {}) {
     if (!renderer || !Object.values(PET_STATES).includes(state)) {
         return;
@@ -1209,7 +1255,7 @@ function transitionTo(state, {
     ui.root.setAttribute('aria-label', stateLabels[state] ?? stateLabels[PET_STATES.IDLE]);
 
     if (bubble) {
-        showBubble(bubble, Math.min(Math.max(duration || 1600, 1000), 2200));
+        showBubble(bubble, Math.min(Math.max(duration || 1600, 1000), 2200), false, manual);
     }
 
     if (duration > 0) {
@@ -1276,20 +1322,24 @@ function showCompanionReport() {
     }, REPORT_BUBBLE_DURATION);
 }
 
-function showBubble(message, duration = 1500, literal = false) {
+function showBubble(message, duration = 1500, literal = false, manual = literal) {
     if (Date.now() < reportUntil) return;
+    if (!manual && (settings?.companionMode === 'quiet' || Date.now() < nextAmbientBubbleAt)) return;
     if (!literal && companion && bubbleScenes[message]) message = companion.say(bubbleScenes[message]);
-    if (!ui?.bubble || !settings.showBubble || !message) {
+    if (!ui?.bubble || !settings?.enabled || !settings.showBubble || !message) {
         return;
     }
 
+    nextAmbientBubbleAt = Date.now() + AMBIENT_BUBBLE_INTERVAL;
+    // Waiting still animates, but its bubble no longer occupies the page indefinitely.
+    if (!manual) duration = Math.min(duration > 0 ? duration : 5000, 5000);
     window.clearTimeout(bubbleTimer);
     bubbleTimer = undefined;
     ui.bubble.textContent = message;
     ui.bubble.classList.add('is-visible');
     positionBubble();
     if (Number.isFinite(duration) && duration > 0) {
-        bubbleTimer = window.setTimeout(hideBubble, Math.max(duration, Math.min(message.length * 100, 16000)));
+        bubbleTimer = window.setTimeout(hideBubble, Math.min(5000, Math.max(duration, message.length * 100)));
     }
 }
 
@@ -1541,7 +1591,9 @@ function bindSillyTavernEvents() {
 
     listen('CHAT_CHANGED', () => {
         companion.baseline();
+        refreshBubbleEditor?.();
         reportUntil = 0;
+        hideBubble();
         clearTypingAttention();
         clearThinkingCompanionTimers();
         clearGenerationWatchdog();
@@ -1625,6 +1677,8 @@ export function destroy() {
     settings = undefined;
     companion = undefined;
     reportUntil = 0;
+    nextAmbientBubbleAt = 0;
+    refreshBubbleEditor = undefined;
     renderer = undefined;
     ui = undefined;
     initializePromise = undefined;
@@ -1726,7 +1780,7 @@ async function initialize() {
             lieDown() {
                 clearPoseTimer();
                 renderer?.setForm('lying');
-                showBubble('趴趴～', 1200);
+                showBubble('趴趴～', 1200, false, true);
             },
             sitUp() {
                 wakeNuoji();
@@ -1735,7 +1789,7 @@ async function initialize() {
                 clearPoseTimer();
                 renderer?.setForm('ball');
                 renderer?.setState(PET_STATES.THINKING);
-                showBubble('咕噜噜～', 1200);
+                showBubble('咕噜噜～', 1200, false, true);
             },
             walk(direction = 0, duration = WALK_DURATION) {
                 return startAutoWalk(direction, duration, { announce: true });

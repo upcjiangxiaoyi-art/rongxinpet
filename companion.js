@@ -11,8 +11,32 @@ export const SCENES = Object.freeze({
     idle: { label: '安静陪伴', lines: ['趴一会儿陪你～'] },
     sleeping: { label: '困嘟嘟', lines: ['困嘟嘟…'] },
     confused: { label: '迷糊', lines: ['欸？'] },
-    report: { label: '长按播报', lines: ['现在是{时间}，宝宝今天已经和{今日卡数}张卡聊了{今日层数}层啦。当前聊天有{当前楼层}条角色回复，猫猫陪着呢。'] },
+    report: { label: '长按播报', lines: ['现在是{时间}，宝宝今天已经和{今日卡数}张卡聊了{今日层数}层啦，猫猫陪着呢。'] },
 });
+
+// Card identity follows the avatar filename, so reordering cards does not mix copy.
+// Group chats deliberately use general copy rather than guessing a speaker.
+export function currentCard(ctx) {
+    if (ctx.groupId != null) return null;
+    const card = ctx.characters?.[ctx.characterId];
+    return card?.avatar ? { key: `card:${card.avatar}`, name: card.name || '当前角色' } : null;
+}
+
+export function migrateCompanionSettings(settings) {
+    if (!settings.cardBubbles || typeof settings.cardBubbles !== 'object' || Array.isArray(settings.cardBubbles)) settings.cardBubbles = {};
+    if (settings.companionMode !== 'quiet') settings.companionMode = 'daily';
+    if (settings.floorCopyMigrated) return;
+    // Keep an untouched backup before removing sentences containing the retired variable.
+    const original = settings.customBubbles || {};
+    const affected = Object.values(original).some(text => typeof text === 'string' && text.includes('{当前楼层}'));
+    if (affected) {
+        settings.legacyFloorBubbles = { ...original };
+        for (const [scene, text] of Object.entries(original)) {
+            if (typeof text === 'string') original[scene] = text.replace(/[^。！？\n]*\{当前楼层\}[^。！？\n]*[。！？]?/g, '').trim();
+        }
+    }
+    settings.floorCopyMigrated = true;
+}
 
 export function localDay(date = new Date()) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -32,7 +56,7 @@ export function sceneLines(custom, scene) {
 export function renderLine(custom, scene, values, random = Math.random) {
     const lines = sceneLines(custom, scene);
     return lines[Math.min(lines.length - 1, Math.floor(random() * lines.length))]
-        .replace(/\{(时间|时段|角色名|今日卡数|今日层数|当前楼层)\}/g, (match, key) => String(values[key] ?? match));
+        .replace(/\{(时间|时段|角色名|今日卡数|今日层数)\}/g, (match, key) => String(values[key] ?? match));
 }
 
 const isReply = message => message && !message.is_user && !message.is_system;
@@ -105,10 +129,14 @@ export class Companion {
             角色名: ctx.characters?.[ctx.characterId]?.name ?? ctx.name2 ?? '宝宝',
             今日卡数: day.cards.length,
             今日层数: day.replies.length,
-            当前楼层: (ctx.chat ?? []).filter(isReply).length,
         };
     }
-    say(scene) {
-        return renderLine(this.settings.customBubbles, scene, this.values());
+    say(scene, scope = 'current') {
+        const card = scope === 'general' ? null : currentCard(this.getContext());
+        const overrides = card ? this.settings.cardBubbles?.[card.key] : null;
+        const specific = overrides?.[scene];
+        const custom = typeof specific === 'string' && specific.trim()
+            ? { ...this.settings.customBubbles, [scene]: specific } : this.settings.customBubbles;
+        return renderLine(custom, scene, this.values());
     }
 }

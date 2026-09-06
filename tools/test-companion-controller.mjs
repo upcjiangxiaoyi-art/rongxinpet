@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 const code = await readFile(new URL('../companion.js',import.meta.url),'utf8');
-const {Companion,SCENES,sceneLines}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const {Companion,SCENES,sceneLines,currentCard,migrateCompanionSettings}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
 let now=0, next=0;
 const timers=new Map();
 const setTimeout=(fn,delay=0)=>{timers.set(++next,{fn,at:now+delay});return next;};
@@ -17,11 +17,11 @@ const ctx={extensionSettings:{},characters:[{avatar:'a.png',name:'甲'}],charact
 const handlers={};ctx.event_types=Object.fromEntries(['MESSAGE_SENT','GENERATION_STARTED','MESSAGE_RECEIVED','GENERATION_ENDED','GENERATION_STOPPED','IMPERSONATE_READY','STREAM_TOKEN_RECEIVED','CHAT_CHANGED'].map(x=>[x,x]));ctx.eventSource={on:(k,f)=>handlers[k]=f};
 const settings={enabled:true,showBubble:true,autoWalk:false,customBubbles:{report:'现在{时间}，今天{今日卡数}卡{今日层数}层。<b>陪着呢</b>'}};
 const cat=new Companion(settings,()=>ctx,()=>{});
-const world={Companion,SCENES,sceneLines,console,performance:{now:()=>now},Date:class extends Date{static now(){return now;}},window:{setTimeout,clearTimeout,requestAnimationFrame:()=>0,cancelAnimationFrame(){},matchMedia:()=>({matches:false}),innerWidth:390,innerHeight:844},document:{readyState:'loading',documentElement:{clientWidth:390,clientHeight:844},getElementById:()=>null,addEventListener(){},removeEventListener(){}},SillyTavern:{getContext:()=>ctx},PET_STATES:Object.fromEntries(['idle','listening','thinking','happy','confused','petting','nuzzling','sleeping','wave'].map(x=>[x.toUpperCase(),x])),WAVE_DURATION_MS:2800,NUZZLE_DURATION_MS:4200};
+const world={Companion,SCENES,sceneLines,currentCard,migrateCompanionSettings,console,performance:{now:()=>now},Date:class extends Date{static now(){return now;}},window:{setTimeout,clearTimeout,requestAnimationFrame:()=>0,cancelAnimationFrame(){},matchMedia:()=>({matches:false}),innerWidth:390,innerHeight:844},document:{readyState:'loading',documentElement:{clientWidth:390,clientHeight:844},getElementById:()=>null,addEventListener(){},removeEventListener(){}},SillyTavern:{getContext:()=>ctx},PET_STATES:Object.fromEntries(['idle','listening','thinking','happy','confused','petting','nuzzling','sleeping','wave'].map(x=>[x.toUpperCase(),x])),WAVE_DURATION_MS:2800,NUZZLE_DURATION_MS:4200};
 const sandbox=vm.createContext(world);
 let source=await readFile(new URL('../index.js',import.meta.url),'utf8');
 source=source.replace(/^import .*;$/gm,'').replaceAll('import.meta.url',JSON.stringify('http://localhost/scripts/extensions/third-party/nuojipet/index.js')).replaceAll('export function','function');
-source+='\nthis.testApi={setup(s,c,r,u,co){settings=s;context=c;renderer=r;ui=u;companion=co;},bindSillyTavernEvents,showCompanionReport,returnToAmbient,showBubble,hideBubble,handlePointerUp,scheduleLongPress,drag,positionBubble};';
+source+='\nthis.testApi={setup(s,c,r,u,co){settings=s;context=c;renderer=r;ui=u;companion=co;},bindSillyTavernEvents,showCompanionReport,returnToAmbient,showBubble,hideBubble,handlePointerUp,scheduleLongPress,drag,positionBubble,petNuoji,getSettings,bindSettingsControls};';
 vm.runInContext(source,sandbox);
 const api=sandbox.testApi;api.setup(settings,ctx,renderer,{root,bubble},cat);api.bindSillyTavernEvents();
 handlers.GENERATION_STARTED('normal');ctx.chat.push({mes:'reply',send_date:'one'});handlers.MESSAGE_RECEIVED(1);handlers.GENERATION_ENDED();
@@ -40,3 +40,39 @@ settings.enabled=false;handlers.GENERATION_STARTED('normal');ctx.chat.push({mes:
 settings.enabled=true;handlers.GENERATION_STARTED('regenerate');ctx.chat.push({mes:'regenerated',send_date:'three'});handlers.MESSAGE_RECEIVED(3,'regenerate');handlers.GENERATION_ENDED();assert.equal(cat.values().今日层数,1,'regeneration excluded through controller');
 api.positionBubble();const left=170+parseFloat(bubble.style.left),top=550+parseFloat(bubble.style.top);assert.ok(left>=8 && left+260<=382 && top>=8 && top+100<=836,'positioning fits 390px viewport');
 console.log('PASS: controller event wiring, long-press/release, report lifetime, ambient protection, disabled and regeneration filtering, mobile position math.');
+
+advance(10000);api.hideBubble();settings.companionMode='quiet';
+api.showBubble('回信来啦！');assert.ok(!classes.has('is-visible'),'quiet suppresses automatic bubbles');
+handlers.GENERATION_STARTED('normal');ctx.chat.push({mes:'quiet mode reply',send_date:'four'});handlers.MESSAGE_RECEIVED(4);handlers.GENERATION_ENDED();assert.equal(cat.values().今日层数,2,'quiet mode retains daily counting');
+api.petNuoji();assert.ok(classes.has('is-visible'),'quiet still answers manual petting');
+advance(5000);api.showCompanionReport();assert.ok(classes.has('is-visible'),'quiet still reports');advance(5000);
+settings.companionMode='daily';advance(10000);
+api.showBubble('first automatic',1500);assert.equal(bubble.textContent,'first automatic');
+advance(5000);api.showBubble('too soon',1500);assert.ok(!classes.has('is-visible'),'automatic bubbles throttled');
+advance(5000);api.showBubble('next automatic',0);assert.equal(bubble.textContent,'next automatic');
+advance(5000);assert.ok(!classes.has('is-visible'),'waiting bubble has finite lifetime');
+ctx.extensionSettings.nuoji_pet={scale:40};assert.equal(api.getSettings().scale,40,'saved 40 percent survives reload');
+ctx.extensionSettings.nuoji_pet.scale=20;assert.equal(api.getSettings().scale,40,'minimum is 40 percent');
+console.log('PASS: quiet/manual interaction, ten-second ambient interval, finite wait bubble and 40-percent settings.');
+// Exercise editor bindings: the selected scope must be the actual write target.
+const elements={};
+for(const id of ['nuoji-bubble-scene','nuoji-bubble-lines','nuoji-bubble-scope','nuoji-bubble-scope-label','nuoji-bubble-reset','nuoji-bubble-preview','nuoji-report','nuoji-companion-mode']) {
+ elements[id]={value:'',textContent:'',options:[],handlers:{},addEventListener(k,f){this.handlers[k]=f;},removeEventListener(){},append(option){this.options.push(option);}};
+}
+elements['nuoji-bubble-scene'].value='chat';
+elements['nuoji-bubble-scope'].value='general';elements['nuoji-bubble-scope'].options=[{},{}];
+world.document.getElementById=id=>elements[id]??null;
+world.document.createElement=()=>({});world.document.querySelectorAll=()=>[];
+settings.customBubbles.chat='通用';settings.cardBubbles={};settings.companionMode='daily';
+api.bindSettingsControls();
+const scope=elements['nuoji-bubble-scope'],editor=elements['nuoji-bubble-lines'];
+assert.equal(editor.value,'通用');
+scope.value='card';scope.handlers.change();assert.equal(editor.value,'');
+editor.value='甲的台词';editor.handlers.input();assert.equal(settings.cardBubbles['card:a.png'].chat,'甲的台词');
+ctx.characters.push({name:'乙',avatar:'b.png'});ctx.characterId=1;ctx.chatId='b';ctx.chat=[];
+handlers.CHAT_CHANGED();assert.equal(editor.value,'','switching card refreshes editor rather than leaking previous copy');
+editor.value='乙的台词';editor.handlers.input();
+assert.equal(settings.cardBubbles['card:a.png'].chat,'甲的台词');assert.equal(settings.cardBubbles['card:b.png'].chat,'乙的台词');
+elements['nuoji-bubble-reset'].handlers.click();assert.equal(editor.value,'');assert.equal(cat.say('chat'),'通用');
+ctx.groupId='group';handlers.CHAT_CHANGED();assert.equal(scope.value,'general');assert.equal(scope.options[1].disabled,true);
+console.log('PASS: settings editor writes correct card, follows chat changes, resets to general inheritance and disables card scope for groups.');

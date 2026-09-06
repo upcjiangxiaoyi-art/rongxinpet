@@ -27,7 +27,7 @@
             <div class="nuoji-settings-grid">
                 <div class="nuoji-setting-row">
                     <label for="nuoji-scale">糯叽大小</label>
-                    <input id="nuoji-scale" type="range" min="70" max="150" step="5" />
+                    <input id="nuoji-scale" type="range" min="40" max="150" step="5" />
                     <output id="nuoji-scale-value" for="nuoji-scale">100%</output>
                 </div>
                 <div class="nuoji-setting-row">
@@ -54,18 +54,30 @@
 
             <details class="nuoji-companion-settings" open>
                 <summary>小气泡与陪伴</summary>
+                <label for="nuoji-companion-mode">陪伴方式</label>
+                <select id="nuoji-companion-mode" class="text_pole">
+                    <option value="daily">日常陪伴</option>
+                    <option value="quiet">安静陪伴</option>
+                </select>
+                <small>安静时只回应你的摸摸、长按和设置预览，动作与今日统计照常。日常主动气泡至少间隔 10 秒，每次最多显示 5 秒。</small>
                 <p>长按糯叽，就能听她报时间和今天的聊天统计。</p>
                 <button id="nuoji-report" class="menu_button" type="button">听听今日播报</button>
+                <label for="nuoji-bubble-scope">台词用在哪里</label>
+                <select id="nuoji-bubble-scope" class="text_pole">
+                    <option value="general">所有角色通用</option>
+                    <option value="card">当前角色专属</option>
+                </select>
+                <small id="nuoji-bubble-scope-label"></small>
                 <label for="nuoji-bubble-scene">选择说话场景</label>
                 <select id="nuoji-bubble-scene" class="text_pole"></select>
                 <label for="nuoji-bubble-lines">每行一句，糯叽随机说（最多 30 句，每句 240 字）</label>
                 <textarea id="nuoji-bubble-lines" class="text_pole" rows="5" maxlength="7500" placeholder="写下你想听糯叽说的话"></textarea>
-                <small>自动保存；留空使用默认台词。可用：{时间}、{时段}、{角色名}、{今日卡数}、{今日层数}、{当前楼层}。</small>
+                <small>自动保存；专属台词留空继承通用，通用台词留空使用默认。可用：{时间}、{时段}、{角色名}、{今日卡数}、{今日层数}。</small>
                 <div class="nuoji-preview-actions">
                     <button id="nuoji-bubble-preview" class="menu_button" type="button">预览这句</button>
                     <button id="nuoji-bubble-reset" class="menu_button" type="button">恢复此场景默认</button>
                 </div>
-                <p class="nuoji-count-note">按设备当地时间每日归零，从启用后开始记录。今日层数只记新收到的角色回复；重生成、续写、切换候选和翻阅旧聊天不加数。卡数按有新回复的角色去重。当前楼层是本聊天角色回复总数（含开场白）。关闭糯叽时暂停统计。</p>
+                <p class="nuoji-count-note">按设备当地时间每日归零，从启用后开始记录。今日层数只记新收到的角色回复；重生成、续写、切换候选和翻阅旧聊天不加数。卡数按有新回复的角色去重。关闭糯叽时暂停统计。</p>
             </details>
 
             <div class="nuoji-preview-title">戳戳看糯叽的动作</div>

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 const code = await readFile(new URL('../companion.js', import.meta.url), 'utf8');
-const { Companion, renderLine, localDay, timePeriod } = await import('data:text/javascript;base64,' + Buffer.from(code).toString('base64'));
+const { Companion, renderLine, localDay, timePeriod, currentCard, migrateCompanionSettings } = await import('data:text/javascript;base64,' + Buffer.from(code).toString('base64'));
 let date = new Date(2026, 8, 6, 23, 59);
 let saved = 0;
 const settings = {};
@@ -63,3 +63,26 @@ ctx.groupId = null; ctx.characterId = 0; ctx.chatId=null; ctx.chat=[];
 cat.baseline(); cat.start('normal'); ctx.chatId='new';
 assert.equal(cat.receive(append()), true);
 console.log('PASS: new replies, deduplication, refresh, history, excluded generation types, chat switches, groups, midnight, templates.');
+
+// Card-specific copy follows a stable identity and falls back per scene.
+settings.customBubbles = {chat:'通用切卡', report:'今日{今日层数}层'};
+settings.cardBubbles = {'card:a.png':{chat:'甲的山寨'},'card:b.png':{chat:'乙的花园'}};
+ctx.groupId = null; ctx.characterId = 0;
+assert.equal(cat.say('chat'),'甲的山寨');
+assert.equal(cat.say('chat','general'),'通用切卡','general editor preview bypasses card override');
+ctx.chatId='another-a';assert.equal(cat.say('chat'),'甲的山寨');
+ctx.characters.reverse();ctx.characterId=1;assert.equal(cat.say('chat'),'甲的山寨','reordered cards retain copy');
+ctx.characterId=0;assert.equal(cat.say('chat'),'乙的花园');
+settings.cardBubbles['card:b.png'].chat='  \n ';
+assert.equal(cat.say('chat'),'通用切卡','blank card scene inherits general');
+ctx.groupId='g';assert.equal(currentCard(ctx),null);assert.equal(cat.say('chat'),'通用切卡','group does not borrow last speaker copy');
+const legacy={customBubbles:{report:'宝宝今天{今日层数}层。当前聊天有{当前楼层}条角色回复，猫猫陪着呢。',petting:'摸摸'}};
+migrateCompanionSettings(legacy);
+assert.equal(legacy.customBubbles.report,'宝宝今天{今日层数}层。');
+assert.ok(legacy.legacyFloorBubbles.report.includes('{当前楼层}'),'original custom copy backed up');
+assert.equal(legacy.customBubbles.petting,'摸摸');
+const backup=legacy.legacyFloorBubbles;migrateCompanionSettings(legacy);assert.equal(legacy.legacyFloorBubbles,backup);
+assert.ok(!Object.hasOwn(cat.values(),'当前楼层'));
+Object.defineProperty(ctx,'chat',{get(){throw Error('total history must not be scanned to speak');},configurable:true});
+assert.ok(cat.say('report').includes('今日'));
+console.log('PASS: per-card inheritance, general preview, reordered cards, groups, legacy migration and no history scan for speech.');
