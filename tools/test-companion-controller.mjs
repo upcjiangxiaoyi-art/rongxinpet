@@ -34,7 +34,8 @@ api.drag.active=true;api.drag.moved=false;api.drag.pointerId=7;api.scheduleLongP
 assert.equal(api.drag.longPress,true);
 api.handlePointerUp({pointerId:7,clientX:250,clientY:650,stopImmediatePropagation(){},preventDefault(){}});
 assert.equal(api.drag.active,false);assert.ok(classes.has('is-visible'),'release preserves report');
-advance(16000);assert.ok(!classes.has('is-visible'),'report eventually expires');
+advance(4999);assert.ok(classes.has('is-visible'),'report remains visible before five seconds');
+advance(1);assert.ok(!classes.has('is-visible'),'report expires at exactly five seconds, even for long copy');
 settings.enabled=false;handlers.GENERATION_STARTED('normal');ctx.chat.push({mes:'disabled reply',send_date:'two'});handlers.MESSAGE_RECEIVED(2);handlers.GENERATION_ENDED();assert.equal(cat.values().今日层数,1,'disabled counter');
 settings.enabled=true;handlers.GENERATION_STARTED('regenerate');ctx.chat.push({mes:'regenerated',send_date:'three'});handlers.MESSAGE_RECEIVED(3,'regenerate');handlers.GENERATION_ENDED();assert.equal(cat.values().今日层数,1,'regeneration excluded through controller');
 api.positionBubble();const left=170+parseFloat(bubble.style.left),top=550+parseFloat(bubble.style.top);assert.ok(left>=8 && left+260<=382 && top>=8 && top+100<=836,'positioning fits 390px viewport');

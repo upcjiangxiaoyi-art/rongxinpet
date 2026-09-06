@@ -21,6 +21,7 @@ const STALE_PRESS_TIMEOUT = 15000;
 const DOUBLE_TAP_WINDOW = 320;
 const DOUBLE_TAP_RADIUS = 42;
 const LONG_PRESS_DURATION = 600;
+const REPORT_BUBBLE_DURATION = 5000;
 const TYPING_IDLE_DELAY = 3000;
 const THINKING_COMPANION_DELAY = 20000;
 const AUTO_LIE_DELAY = 28000;
@@ -1265,14 +1266,14 @@ function positionBubble() {
 function showCompanionReport() {
     if (!settings?.enabled) return;
     reportUntil = 0;
-    showBubble(companion.say('report'), 16000, true);
-    reportUntil = Date.now() + 16000;
+    showBubble(companion.say('report'), REPORT_BUBBLE_DURATION, true);
+    reportUntil = Date.now() + REPORT_BUBBLE_DURATION;
     window.clearTimeout(bubbleTimer);
     bubbleTimer = window.setTimeout(() => {
         reportUntil = 0;
         hideBubble();
         if (isGenerating) showBubble(thinkingCompanionMessage, 0);
-    }, 16000);
+    }, REPORT_BUBBLE_DURATION);
 }
 
 function showBubble(message, duration = 1500, literal = false) {
