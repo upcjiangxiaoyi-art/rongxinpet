@@ -11,7 +11,7 @@ const advance=ms=>{const end=now+ms;while(true){const pending=[...timers].filter
 const classes=new Set();
 const classList={add:(...xs)=>xs.forEach(x=>classes.add(x)),remove:(...xs)=>xs.forEach(x=>classes.delete(x)),contains:x=>classes.has(x),toggle:(x,value)=>value?classes.add(x):classes.delete(x)};
 const root={classList,style:{setProperty(){}},dataset:{},setAttribute(){},getBoundingClientRect:()=>({left:170,top:550,width:202,height:202})};
-const bubble={classList:{...classList},style:{},offsetWidth:260,offsetHeight:100,textContent:''};
+const bubble={classList:{...classList},dataset:{},style:{setProperty(k,v){this[k]=v;}},offsetWidth:260,offsetHeight:100,textContent:''};
 const renderer={state:'idle',setForm(){},setState(s){this.state=s;},currentForm:()=> 'sitting',stop(){},start(){},setReducedMotion(){},pulse(){}};
 const ctx={extensionSettings:{},characters:[{avatar:'a.png',name:'甲'}],characterId:0,chatId:'a',chat:[{mes:'old'}],saveSettingsDebounced(){}};
 const handlers={};ctx.event_types=Object.fromEntries(['MESSAGE_SENT','GENERATION_STARTED','MESSAGE_RECEIVED','GENERATION_ENDED','GENERATION_STOPPED','IMPERSONATE_READY','STREAM_TOKEN_RECEIVED','CHAT_CHANGED'].map(x=>[x,x]));ctx.eventSource={on:(k,f)=>handlers[k]=f};
@@ -76,3 +76,17 @@ assert.equal(settings.cardBubbles['card:a.png'].chat,'甲的台词');assert.equa
 elements['nuoji-bubble-reset'].handlers.click();assert.equal(editor.value,'');assert.equal(cat.say('chat'),'通用');
 ctx.groupId='group';handlers.CHAT_CHANGED();assert.equal(scope.value,'general');assert.equal(scope.options[1].disabled,true);
 console.log('PASS: settings editor writes correct card, follows chat changes, resets to general inheritance and disables card scope for groups.');
+
+// A top-edge pet must use a side bubble, with a tail facing the pet.
+root.getBoundingClientRect=()=>({left:292,top:10,width:80,height:80});
+bubble.offsetWidth=220;bubble.offsetHeight=45;api.positionBubble();
+assert.equal(bubble.dataset.placement,'left');
+assert.ok(292+parseFloat(bubble.style.left)+220<=282,'top-right bubble clears pet body');
+root.getBoundingClientRect=()=>({left:10,top:10,width:80,height:80});api.positionBubble();
+assert.equal(bubble.dataset.placement,'right');assert.ok(10+parseFloat(bubble.style.left)>=100);
+root.getBoundingClientRect=()=>({left:10,top:10,width:303,height:303});api.positionBubble();
+assert.equal(bubble.dataset.placement,'below');assert.ok(10+parseFloat(bubble.style.top)>=323,'fallback clears whole body');
+root.getBoundingClientRect=()=>({left:170,top:550,width:202,height:202});api.positionBubble();assert.equal(bubble.dataset.placement,'above');
+world.window.visualViewport={offsetLeft:0,offsetTop:100,width:390,height:600};
+root.getBoundingClientRect=()=>({left:292,top:110,width:80,height:80});api.positionBubble();assert.equal(bubble.dataset.placement,'left');assert.ok(110+parseFloat(bubble.style.top)>=108);
+console.log('PASS: top-left/right side placement, full-body fallback, ordinary above placement and visual viewport offsets.');

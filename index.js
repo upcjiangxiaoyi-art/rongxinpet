@@ -1298,15 +1298,47 @@ const bubbleScenes = {
 function positionBubble() {
     if (!ui?.bubble) return;
     const pet = ui.root.getBoundingClientRect();
-    ui.bubble.style.maxWidth = `${Math.min(260, Math.max(80, viewportBox().width - 32))}px`;
-    const width = ui.bubble.offsetWidth;
-    const height = ui.bubble.offsetHeight;
     const viewport = viewportBox();
-    const viewportWidth = viewport.width;
-    const viewportHeight = viewport.height;
-    ui.bubble.style.left = `${clamp(pet.left + pet.width / 2 - width / 2, viewport.left + 8, Math.max(viewport.left + 8, viewport.left + viewportWidth - width - 8)) - pet.left}px`;
-    const above = pet.top + pet.height * 0.13 - height - 10;
-    ui.bubble.style.top = `${clamp(above < viewport.top + 8 ? pet.top + pet.height * 0.7 : above, viewport.top + 8, Math.max(viewport.top + 8, viewport.top + viewportHeight - height - 8)) - pet.top}px`;
+    const margin = 8;
+    const gap = 10;
+    const leftEdge = viewport.left + margin;
+    const rightEdge = viewport.left + viewport.width - margin;
+    const topEdge = viewport.top + margin;
+    const bottomEdge = viewport.top + viewport.height - margin;
+    const speech = ui.bubble;
+    speech.style.maxWidth = `${Math.min(260, Math.max(1, viewport.width - margin * 2))}px`;
+    let width = speech.offsetWidth;
+    let height = speech.offsetHeight;
+    const headX = pet.left + pet.width / 2;
+    const headY = pet.top + pet.height * 0.13;
+    let placement = 'above';
+    let left = headX - width / 2;
+    let top = headY - height - gap;
+
+    if (top < topEdge) {
+        // At the top edge, move beside Nuoji rather than over her belly.
+        const leftRoom = pet.left - gap - leftEdge;
+        const rightRoom = rightEdge - pet.left - pet.width - gap;
+        if (Math.max(leftRoom, rightRoom) >= 100) {
+            placement = leftRoom >= rightRoom ? 'left' : 'right';
+            speech.style.maxWidth = `${Math.min(260, placement === 'left' ? leftRoom : rightRoom)}px`;
+            width = speech.offsetWidth;
+            height = speech.offsetHeight;
+            left = placement === 'left' ? pet.left - gap - width : pet.left + pet.width + gap;
+            top = headY - height / 2;
+        } else {
+            placement = 'below';
+            top = pet.top + pet.height + gap;
+        }
+    }
+    left = clamp(left, leftEdge, Math.max(leftEdge, rightEdge - width));
+    top = clamp(top, topEdge, Math.max(topEdge, bottomEdge - height));
+    speech.style.left = `${left - pet.left}px`;
+    speech.style.top = `${top - pet.top}px`;
+    speech.dataset.placement = placement;
+    // Keep the tail pointing towards Nuoji after viewport-edge clamping.
+    speech.style.setProperty('--nuoji-tail-x', `${clamp(headX - left - 5, 12, Math.max(12, width - 23))}px`);
+    speech.style.setProperty('--nuoji-tail-y', `${clamp(headY - top - 5, 12, Math.max(12, height - 23))}px`);
 }
 
 function showCompanionReport() {

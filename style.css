@@ -69,6 +69,7 @@ body:has(#nuoji-pet-root.is-dragging) {
     z-index: 2;
     left: 50%;
     top: 13%;
+    box-sizing: border-box;
     width: max-content;
     max-width: min(260px, calc(100vw - 32px));
     padding: 7px 11px;
@@ -93,7 +94,7 @@ body:has(#nuoji-pet-root.is-dragging) {
 .nuoji-speech::after {
     content: "";
     position: absolute;
-    left: 19px;
+    left: var(--nuoji-tail-x, 19px);
     bottom: -6px;
     width: 11px;
     height: 11px;
@@ -274,3 +275,22 @@ body:has(#nuoji-pet-root.is-dragging) {
 .nuoji-companion-settings label { display: block; margin-top: 10px; }
 .nuoji-companion-settings textarea, .nuoji-companion-settings select { width: 100%; box-sizing: border-box; }
 .nuoji-companion-settings small, .nuoji-count-note { font-size: 12px; line-height: 1.6; opacity: .85; }
+
+.nuoji-speech[data-placement="below"]::after {
+    top: -6px;
+    bottom: auto;
+    transform: rotate(225deg);
+}
+.nuoji-speech[data-placement="left"]::after {
+    left: auto;
+    right: -6px;
+    top: var(--nuoji-tail-y, 12px);
+    bottom: auto;
+    transform: rotate(-45deg);
+}
+.nuoji-speech[data-placement="right"]::after {
+    left: -6px;
+    top: var(--nuoji-tail-y, 12px);
+    bottom: auto;
+    transform: rotate(135deg);
+}
