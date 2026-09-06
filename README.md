@@ -8,7 +8,7 @@
 
 不需要投喂，不设签到任务，也不催你完成什么。她只是在你写故事的时候，陪在旁边。
 
-**当前版本：0.19.1** · [更新记录](CHANGELOG.md) · [替换形象与二改指南](docs/CUSTOMIZATION.md) · [MIT 许可证](LICENSE)
+**当前版本：0.19.2** · [更新记录](CHANGELOG.md) · [替换形象与二改指南](docs/CUSTOMIZATION.md) · [MIT 许可证](LICENSE)
 
 ![糯叽歪头打招呼与单眼 wink 动作预览](docs/gestures-preview.gif)
 

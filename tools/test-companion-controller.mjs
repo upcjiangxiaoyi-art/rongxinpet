@@ -21,7 +21,7 @@ const world={Companion,SCENES,sceneLines,currentCard,migrateCompanionSettings,co
 const sandbox=vm.createContext(world);
 let source=await readFile(new URL('../index.js',import.meta.url),'utf8');
 source=source.replace(/^import .*;$/gm,'').replaceAll('import.meta.url',JSON.stringify('http://localhost/scripts/extensions/third-party/nuojipet/index.js')).replaceAll('export function','function');
-source+='\nthis.testApi={setup(s,c,r,u,co){settings=s;context=c;renderer=r;ui=u;companion=co;},bindSillyTavernEvents,showCompanionReport,returnToAmbient,showBubble,hideBubble,handlePointerUp,scheduleLongPress,drag,positionBubble,petNuoji,getSettings,bindSettingsControls};';
+source+='\nthis.testApi={setup(s,c,r,u,co){settings=s;context=c;renderer=r;ui=u;companion=co;},bindSillyTavernEvents,showCompanionReport,returnToAmbient,showBubble,hideBubble,handlePointerUp,scheduleLongPress,drag,positionBubble,petNuoji,getSettings,bindSettingsControls,bubbleViewportBox};';
 vm.runInContext(source,sandbox);
 const api=sandbox.testApi;api.setup(settings,ctx,renderer,{root,bubble},cat);api.bindSillyTavernEvents();
 handlers.GENERATION_STARTED('normal');ctx.chat.push({mes:'reply',send_date:'one'});handlers.MESSAGE_RECEIVED(1);handlers.GENERATION_ENDED();
@@ -90,3 +90,23 @@ root.getBoundingClientRect=()=>({left:170,top:550,width:202,height:202});api.pos
 world.window.visualViewport={offsetLeft:0,offsetTop:100,width:390,height:600};
 root.getBoundingClientRect=()=>({left:292,top:110,width:80,height:80});api.positionBubble();assert.equal(bubble.dataset.placement,'left');assert.ok(110+parseFloat(bubble.style.top)>=108);
 console.log('PASS: top-left/right side placement, full-body fallback, ordinary above placement and visual viewport offsets.');
+
+// Keyboard pan: layout viewport coordinates and client coordinates may differ.
+world.window.visualViewport={offsetLeft:0,offsetTop:220,width:390,height:410};
+root.style.left='270px';root.style.top='400px';
+root.getBoundingClientRect=()=>({left:270,top:180,width:80,height:80});
+api.positionBubble();assert.equal(bubble.dataset.placement,'above','keyboard origin correction prevents a false top-edge fallback');
+assert.ok(180+parseFloat(bubble.style.top)+bubble.offsetHeight<200,'typing bubble stays next to pet rather than keyboard');
+assert.equal(api.bubbleViewportBox(root.getBoundingClientRect()).top,0);
+// Chromium/layout-origin behavior must still retain the visual viewport offset.
+root.getBoundingClientRect=()=>({left:270,top:400,width:80,height:80});
+assert.equal(api.bubbleViewportBox(root.getBoundingClientRect()).top,220);
+// Late keyboard geometry changes without a resize event are followed while visible.
+settings.companionMode='daily';api.showBubble('typing follow',5000,true);
+const oldTop=bubble.style.top;
+root.getBoundingClientRect=()=>({left:270,top:180,width:80,height:80});
+world.window.visualViewport.offsetTop=180;
+advance(100);assert.notEqual(bubble.style.top,oldTop,'visible bubble follows late keyboard pan');
+advance(5000);assert.ok(!classes.has('is-visible'));
+const hiddenTop=bubble.style.top;root.getBoundingClientRect=()=>({left:270,top:50,width:80,height:80});advance(200);assert.equal(bubble.style.top,hiddenTop,'follow stops on dismissal');
+console.log('PASS: keyboard client/layout origin correction, late viewport pan and follow timer cleanup.');

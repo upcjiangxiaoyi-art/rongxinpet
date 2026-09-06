@@ -74,6 +74,7 @@ let ui;
 let initializePromise;
 let reactionTimer;
 let bubbleTimer;
+let bubbleFollowTimer;
 let positionFrame;
 let hoverFrame;
 let bootTimer;
@@ -1295,10 +1296,35 @@ const bubbleScenes = {
     '陪着你呀': 'idle', '困嘟嘟…': 'sleeping', '欸？': 'confused',
 };
 
+function bubbleViewportBox(pet) {
+    const viewport = viewportBox();
+    // Keyboard panning can shift Safari's client rect origin relative to the
+    // fixed-position CSS coordinates. Measure that origin on the pet itself
+    // so the viewport and pet use the same coordinate space (no UA guessing).
+    const cssLeft = Number.parseFloat(ui.root.style.left);
+    const cssTop = Number.parseFloat(ui.root.style.top);
+    return {
+        ...viewport,
+        left: viewport.left + (Number.isFinite(cssLeft) ? pet.left - cssLeft : 0),
+        top: viewport.top + (Number.isFinite(cssTop) ? pet.top - cssTop : 0),
+    };
+}
+
+function followVisibleBubble() {
+    window.clearTimeout(bubbleFollowTimer);
+    bubbleFollowTimer = undefined;
+    if (!ui?.bubble.classList.contains('is-visible')) return;
+    bubbleFollowTimer = window.setTimeout(() => {
+        bubbleFollowTimer = undefined;
+        if (!document.hidden) positionBubble();
+        followVisibleBubble();
+    }, 100);
+}
+
 function positionBubble() {
     if (!ui?.bubble) return;
     const pet = ui.root.getBoundingClientRect();
-    const viewport = viewportBox();
+    const viewport = bubbleViewportBox(pet);
     const margin = 8;
     const gap = 10;
     const leftEdge = viewport.left + margin;
@@ -1370,6 +1396,7 @@ function showBubble(message, duration = 1500, literal = false, manual = literal)
     ui.bubble.textContent = message;
     ui.bubble.classList.add('is-visible');
     positionBubble();
+    followVisibleBubble();
     if (Number.isFinite(duration) && duration > 0) {
         bubbleTimer = window.setTimeout(hideBubble, Math.min(5000, Math.max(duration, message.length * 100)));
     }
@@ -1380,6 +1407,8 @@ function hideBubble() {
     window.clearTimeout(bubbleTimer);
     bubbleTimer = undefined;
     ui?.bubble.classList.remove('is-visible');
+    window.clearTimeout(bubbleFollowTimer);
+    bubbleFollowTimer = undefined;
 }
 
 function listen(eventName, handler) {
@@ -1640,7 +1669,6 @@ function bindSillyTavernEvents() {
 
 function bindViewportEvents() {
     const scheduleReposition = () => {
-        window.requestAnimationFrame(positionBubble);
         window.cancelAnimationFrame(positionFrame);
         positionFrame = window.requestAnimationFrame(applyStoredPosition);
         scheduleSettingsPreviewLayer();
@@ -1681,6 +1709,7 @@ export function destroy() {
     window.clearTimeout(bootTimer);
     window.clearTimeout(reactionTimer);
     window.clearTimeout(bubbleTimer);
+    window.clearTimeout(bubbleFollowTimer);
     window.cancelAnimationFrame(positionFrame);
     window.cancelAnimationFrame(hoverFrame);
     window.cancelAnimationFrame(settingsLayerFrame);
@@ -1716,6 +1745,7 @@ export function destroy() {
     initializePromise = undefined;
     reactionTimer = undefined;
     bubbleTimer = undefined;
+    bubbleFollowTimer = undefined;
     positionFrame = undefined;
     hoverFrame = undefined;
     bootTimer = undefined;
