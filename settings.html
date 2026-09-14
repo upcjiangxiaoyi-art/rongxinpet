@@ -24,6 +24,17 @@
                 </label>
             </div>
 
+            <details class="rongxin-companion-settings">
+                <summary>绒绒守夜 · 静默播放</summary>
+                <label class="checkbox_label" for="rongxin-keep-alive">
+                    <input id="rongxin-keep-alive" type="checkbox" />
+                    <span>双击绒绒切换静默播放</span>
+                </label>
+                <p id="rongxin-audio-status" role="status">未开启</p>
+                <button id="rongxin-stop-audio" class="menu_button" type="button">停止静默播放</button>
+                <small>开启后双击绒绒开始，再双击停止；刷新后需重新双击。Safari 后台辅助保活不能保证生成不断线，可能占用锁屏播放栏或影响其他音频。中断后双击重试；关闭绒绒会停止播放。</small>
+            </details>
+
             <div class="rongxin-settings-grid">
                 <div class="rongxin-setting-row">
                     <label for="rongxin-scale">绒信大小</label>

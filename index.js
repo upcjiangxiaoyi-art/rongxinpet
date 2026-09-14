@@ -1,3 +1,4 @@
+import { SilentPlayer } from './silent-player.js';
 import { LEGACY_API_NAME, LEGACY_EVENT_NAME, LEGACY_ROOT_ID, LEGACY_PANEL_ID, migrateLegacySettings } from './legacy-compat.js';
 import { RongxinRenderer, PET_STATES, getWalkStrideLength, NUZZLE_DURATION_MS, WAVE_DURATION_MS } from './pet-renderer.js';
 
@@ -42,6 +43,7 @@ const DEFAULT_SETTINGS = Object.freeze({
     reducedMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
     showBubble: true,
     autoWalk: true,
+    doubleTapKeepAlive: true,
     customBubbles: {},
     cardBubbles: {},
     companionMode: 'daily',
@@ -67,6 +69,7 @@ let context;
 let coreApi;
 let settings;
 let companion;
+let silentPlayer;
 let reportUntil = 0;
 let nextAmbientBubbleAt = 0;
 let refreshBubbleEditor;
@@ -532,6 +535,15 @@ function bindSettingsControls() {
     const reducedMotion = document.getElementById('rongxin-reduced-motion');
     const showBubble = document.getElementById('rongxin-show-bubble');
     const autoWalk = document.getElementById('rongxin-auto-walk');
+    const keepAlive = document.getElementById('rongxin-keep-alive');
+    if (keepAlive) on(keepAlive, 'change', event => {
+        settings.doubleTapKeepAlive = event.currentTarget.checked;
+        if (!settings.doubleTapKeepAlive) silentPlayer?.stop();
+        saveSettings();
+    });
+    const stopAudio = document.getElementById('rongxin-stop-audio');
+    if (stopAudio) on(stopAudio, 'click', () => silentPlayer?.stop());
+    updateAudioStatus(silentPlayer?.state ?? 'off', false);
     const resetPosition = document.getElementById('rongxin-reset-position');
     const previewWalk = document.getElementById('rongxin-preview-walk');
 
@@ -644,6 +656,8 @@ function syncSettingsControls() {
     const showBubble = document.getElementById('rongxin-show-bubble');
     const autoWalk = document.getElementById('rongxin-auto-walk');
 
+    const keepAlive = document.getElementById('rongxin-keep-alive');
+    if (keepAlive) keepAlive.checked = Boolean(settings.doubleTapKeepAlive);
     if (enabled) enabled.checked = Boolean(settings.enabled);
     if (scale) scale.value = String(settings.scale);
     if (scaleValue) scaleValue.textContent = `${settings.scale}%`;
@@ -674,6 +688,7 @@ function applyVisualSettings({ reposition = false } = {}) {
         return;
     }
 
+    if (!settings.enabled) silentPlayer?.stop();
     ui.root.classList.toggle('is-disabled', !settings.enabled);
     if (settings.enabled) {
         renderer?.start();
@@ -942,6 +957,7 @@ function registerTap(clientX, clientY) {
     ) {
         clearPendingTap();
         doublePetRongxin();
+        if (settings.doubleTapKeepAlive) silentPlayer?.toggle();
         return;
     }
 
@@ -954,6 +970,16 @@ function registerTap(clientX, clientY) {
         }
     }, DOUBLE_TAP_WINDOW);
     pendingTap = tap;
+}
+
+function updateAudioStatus(state, announce = true) {
+    const labels = { off: '未开启', starting: '正在启动', playing: '静默音频播放中（辅助保活）', interrupted: '播放中断，请双击绒绒重试' };
+    const label = document.getElementById('rongxin-audio-status');
+    if (label) label.textContent = labels[state] ?? state;
+    if (announce) {
+        const messages = { playing: '我帮你守着呢～', off: '守夜结束啦～', interrupted: '双击我一下，让我继续守着吧～' };
+        if (messages[state]) showBubble(messages[state], 3500, true);
+    }
 }
 
 function doublePetRongxin() {
@@ -1704,6 +1730,8 @@ function bindCustomReactionEvent() {
 }
 
 export function destroy() {
+    silentPlayer?.destroy();
+    silentPlayer = undefined;
     while (cleanups.length) {
         try {
             cleanups.pop()();
@@ -1803,6 +1831,13 @@ async function initialize() {
         settings = getSettings();
         companion = new Companion(settings, () => SillyTavern.getContext(), saveSettings);
         ui = createPetUi();
+        silentPlayer = new SilentPlayer(new URL('./assets/silence.wav', import.meta.url).href, updateAudioStatus);
+        on(document, 'visibilitychange', () => {
+            if (!document.hidden && settings?.enabled) silentPlayer?.resume();
+        });
+        on(window, 'pageshow', () => {
+            if (settings?.enabled) silentPlayer?.resume();
+        });
         renderer = new RongxinRenderer(ui.canvas);
         renderer.setReducedMotion(settings.reducedMotion);
         renderer.start();
@@ -1846,6 +1881,7 @@ async function initialize() {
             },
             nuzzle() {
                 doublePetRongxin();
+        if (settings.doubleTapKeepAlive) silentPlayer?.toggle();
             },
             lieDown() {
                 clearPoseTimer();
