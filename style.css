@@ -6,7 +6,9 @@
     --rongxin-safe-bottom: env(safe-area-inset-bottom, 0px);
     --rongxin-safe-left: env(safe-area-inset-left, 0px);
     position: fixed;
-    z-index: 3000;
+    /* Stay reachable above theme decorations and extension drawers. Native
+       modal top-layer UI still wins; transparent pixels remain click-through. */
+    z-index: 2147483647;
     width: calc(202px * var(--rongxin-scale));
     height: calc(202px * var(--rongxin-scale));
     margin: 0;
@@ -30,11 +32,6 @@
 
 #rongxin-pet-root.is-disabled {
     display: none;
-}
-
-#rongxin-pet-root.is-settings-preview {
-    /* Only Rongxin's own open settings panel may temporarily lift her over the mobile drawer. */
-    z-index: 3006;
 }
 
 #rongxin-pet-root.is-pressed,

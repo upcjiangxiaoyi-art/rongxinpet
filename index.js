@@ -609,6 +609,10 @@ function bindSettingsControls() {
 
     if (resetPosition) {
         on(resetPosition, 'click', () => {
+            // Release any interrupted drag/walk before replacing its saved position.
+            finishPointerInteraction();
+            clearAutoWalkTimer();
+            cancelAutoWalk({ settle: false, remember: false });
             settings.position = { ...DEFAULT_SETTINGS.position };
             applyStoredPosition();
             transitionTo(PET_STATES.WAVE, {
