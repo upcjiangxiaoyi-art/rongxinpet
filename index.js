@@ -234,15 +234,24 @@ function createPetUi() {
         <button type="button" data-edge="top" title="回到已加载聊天的顶部">↑ 回顶</button>
         <button type="button" data-edge="bottom" title="回到最新消息底部">↓ 回底</button>
         <button type="button" data-edge="reply" title="回到最后一条角色回复的开头">↥ 本条开头</button>
+        <button type="button" data-refresh="ask" title="重新加载酒馆页面">↻ 刷新页面</button>
+        <div class="rongxin-refresh-confirm" hidden>
+            <p role="status"></p>
+            <button type="button" data-refresh="confirm">确认刷新</button>
+            <button type="button" data-refresh="cancel">取消</button>
+        </div>
     `;
     root.setAttribute('aria-controls', navigation.id);
     root.setAttribute('aria-expanded', 'false');
     document.body.append(navigation);
     on(navigation, 'click', (event) => {
-        const button = event.target.closest('button[data-edge]');
+        const button = event.target.closest('button[data-edge], button[data-refresh]');
         if (!button) return;
         event.stopImmediatePropagation();
-        jumpChatToEdge(button.dataset.edge);
+        if (button.dataset.refresh === 'ask') requestPageRefresh();
+        else if (button.dataset.refresh === 'confirm') confirmPageRefresh();
+        else if (button.dataset.refresh === 'cancel') closeChatNavigation();
+        else jumpChatToEdge(button.dataset.edge);
     });
     on(document, 'keydown', (event) => {
         if (event.key === 'Escape' && !navigation.hidden) {
@@ -283,13 +292,18 @@ function createPetUi() {
     on(document, 'input', handleTypingInput, { capture: true, passive: true });
     on(root, 'keydown', handlePetKeydown);
 
-    return { root, canvas, bubble, hint, navigation };
+    const refreshConfirm = navigation.querySelector('.rongxin-refresh-confirm');
+    return { root, canvas, bubble, hint, navigation, refreshConfirm };
 }
 
 function closeChatNavigation() {
     if (!ui?.navigation) return;
     const hadFocus = ui.navigation.contains(document.activeElement);
     ui.navigation.hidden = true;
+    if (ui.refreshConfirm) {
+        ui.refreshConfirm.hidden = true;
+        ui.navigation.classList.remove('is-confirming-refresh');
+    }
     ui.root.setAttribute('aria-expanded', 'false');
     if (hadFocus) ui.root.focus({ preventScroll: true });
 }
@@ -332,6 +346,26 @@ function positionChatNavigation() {
     const cssTop = Number.parseFloat(ui.root.style.top);
     panel.style.left = `${left + (Number.isFinite(cssLeft) ? cssLeft - pet.left : 0)}px`;
     panel.style.top = `${top + (Number.isFinite(cssTop) ? cssTop - pet.top : 0)}px`;
+}
+
+function requestPageRefresh() {
+    if (!settings?.enabled || !ui?.refreshConfirm || ui.navigation.hidden) return;
+    clearPendingTap();
+    ui.refreshConfirm.querySelector('p').textContent = isGenerating
+        ? '正在生成回复，刷新可能中断。确定刷新酒馆？'
+        : '刷新酒馆页面？未保存的内容可能丢失。';
+    ui.navigation.classList.add('is-confirming-refresh');
+    ui.refreshConfirm.hidden = false;
+    positionChatNavigation();
+    // Default keyboard focus is Cancel; a repeated Enter must never reload.
+    ui.refreshConfirm.querySelector('[data-refresh="cancel"]').focus({ preventScroll: true });
+}
+
+function confirmPageRefresh() {
+    if (!settings?.enabled || !ui?.refreshConfirm || ui.refreshConfirm.hidden || ui.navigation.hidden) return;
+    closeChatNavigation();
+    // Reload this Tavern document, including when it lives inside a wrapper.
+    window.location.reload();
 }
 
 function jumpChatToEdge(edge) {

@@ -74,9 +74,40 @@
 }
 
 #rongxin-chat-navigation button[data-edge="reply"] {
-    grid-column: 1 / -1;
     background: #ede8f4;
     color: #665778;
+}
+
+#rongxin-chat-navigation button[data-refresh] {
+    background: #e7eeea;
+    color: #536c5d;
+}
+
+#rongxin-chat-navigation.is-confirming-refresh > button,
+#rongxin-chat-navigation .rongxin-refresh-confirm[hidden] {
+    display: none;
+}
+
+#rongxin-chat-navigation .rongxin-refresh-confirm {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    width: 210px;
+    max-width: 100%;
+}
+
+#rongxin-chat-navigation .rongxin-refresh-confirm p {
+    grid-column: 1 / -1;
+    margin: 4px 6px 8px;
+    color: #704d58;
+    font: 500 13px/1.5 system-ui, -apple-system, "PingFang SC", sans-serif;
+    overflow-wrap: anywhere;
+}
+
+#rongxin-chat-navigation button[data-refresh="confirm"] {
+    background: #f7e6e7;
+    color: #704d58;
 }
 
 #rongxin-chat-navigation button:focus-visible {

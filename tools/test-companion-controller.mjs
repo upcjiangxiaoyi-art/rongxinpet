@@ -23,7 +23,7 @@ const world={...legacy,Companion,SCENES,sceneLines,currentCard,migrateCompanionS
 const sandbox=vm.createContext(world);
 let source=await readFile(new URL('../index.js',import.meta.url),'utf8');
 source=source.replace(/^import .*;$/gm,'').replaceAll('import.meta.url',JSON.stringify('http://localhost/scripts/extensions/third-party/rongxinpet/index.js')).replaceAll('export function','function');
-source+='\nthis.testApi={setup(s,c,r,u,co){settings=s;context=c;renderer=r;ui=u;companion=co;},bindSillyTavernEvents,showCompanionReport,returnToAmbient,showBubble,hideBubble,handlePointerUp,scheduleLongPress,drag,positionBubble,petRongxin,getSettings,bindSettingsControls,bubbleViewportBox,registerTap,handlePointerDown,handlePointerMove,handleClickGuard,handlePetKeydown,toggleChatNavigation,closeChatNavigation,positionChatNavigation,jumpChatToEdge,applyVisualSettings};';
+source+='\nthis.testApi={setup(s,c,r,u,co){settings=s;context=c;renderer=r;ui=u;companion=co;},bindSillyTavernEvents,showCompanionReport,returnToAmbient,showBubble,hideBubble,handlePointerUp,scheduleLongPress,drag,positionBubble,petRongxin,getSettings,bindSettingsControls,bubbleViewportBox,registerTap,handlePointerDown,handlePointerMove,handleClickGuard,handlePetKeydown,toggleChatNavigation,closeChatNavigation,positionChatNavigation,jumpChatToEdge,applyVisualSettings,requestPageRefresh,confirmPageRefresh};';
 vm.runInContext(source,sandbox);
 const api=sandbox.testApi;api.setup(settings,ctx,renderer,{root,bubble},cat);api.bindSillyTavernEvents();
 handlers.GENERATION_STARTED('normal');ctx.chat.push({mes:'reply',send_date:'one'});handlers.MESSAGE_RECEIVED(1);handlers.GENERATION_ENDED();
@@ -119,7 +119,7 @@ root.style.left='270px';root.style.top='650px';
 root.getBoundingClientRect=()=>({left:270,top:650,width:80,height:80});
 root.focus=()=>{world.document.activeElement=root;};
 const navButton={focus(){world.document.activeElement=this;}};
-const navigation={hidden:true,style:{},offsetWidth:154,offsetHeight:104,contains:x=>x===navButton,querySelector:()=>navButton};
+const navigation={hidden:true,style:{},offsetWidth:230,offsetHeight:104,contains:x=>x===navButton,querySelector:()=>navButton};
 const scrolls=[];
 const chat={scrollHeight:6000,getClientRects:()=>[{}],scrollTo:options=>scrolls.push({...options})};
 world.document.getElementById=id=>id==='chat'?chat:null;
@@ -155,7 +155,7 @@ for(const [left,top,size,width,height] of [[10,10,80,390,844],[300,10,80,390,844
     root.style.left=`${left}px`;root.style.top=`${top}px`;root.getBoundingClientRect=()=>({left,top,width:size,height:size});
     api.toggleChatNavigation();
     const x=parseFloat(navigation.style.left),y=parseFloat(navigation.style.top);
-    assert.ok(x>=8 && y>=8 && x+154<=width-8 && y+104<=height-8,'three-button panel stays inside viewport');
+    assert.ok(x>=8 && y>=8 && x+navigation.offsetWidth<=width-8 && y+104<=height-8,'four-button panel stays inside viewport');
     api.closeChatNavigation();
 }
 world.window.visualViewport={offsetLeft:0,offsetTop:220,width:390,height:410};
@@ -194,3 +194,31 @@ assert.equal(scrolls.length,count,'hidden latest reply must not jump to an older
 replies=[];api.jumpChatToEdge('reply');assert.equal(scrolls.length,count,'empty or user-only chat does not jump');
 api.jumpChatToEdge('unknown');assert.equal(scrolls.length,count,'unknown action is ignored');
 console.log('PASS: latest reply body, user/system exclusion selector, nested-row exclusion, border/scroll offset, hidden body fallback, no-reply and invalid-action handling.');
+
+// Page reload requires a live explicit confirmation; dismissals revoke it.
+let reloads=0;
+world.window.location={reload:()=>reloads++};
+const confirmationText={textContent:''};
+const cancelButton={focus(){world.document.activeElement=this;}};
+const refreshConfirm={hidden:true,querySelector:selector=>selector==='p'?confirmationText:cancelButton};
+const navClasses=new Set();
+navigation.classList={add:x=>navClasses.add(x),remove:x=>navClasses.delete(x)};
+navigation.contains=x=>x===navButton || x===cancelButton;
+api.setup(settings,ctx,renderer,{root,bubble,navigation,refreshConfirm},cat);
+api.confirmPageRefresh();assert.equal(reloads,0,'no direct unconfirmed reload');
+api.toggleChatNavigation();api.requestPageRefresh();
+assert.equal(reloads,0);assert.equal(refreshConfirm.hidden,false);
+assert.equal(world.document.activeElement,cancelButton,'safe default keyboard focus');
+assert.match(confirmationText.textContent,/未保存/);
+api.closeChatNavigation();api.confirmPageRefresh();assert.equal(reloads,0,'cancel revokes confirmation');
+assert.equal(navClasses.has('is-confirming-refresh'),false);
+api.toggleChatNavigation();api.requestPageRefresh();api.confirmPageRefresh();
+assert.equal(reloads,1);assert.equal(navigation.hidden,true);assert.equal(refreshConfirm.hidden,true);
+api.confirmPageRefresh();assert.equal(reloads,1,'duplicate confirm cannot reload twice');
+vm.runInContext('isGenerating=true',sandbox);
+api.toggleChatNavigation();api.requestPageRefresh();assert.match(confirmationText.textContent,/正在生成/);
+handlers.CHAT_CHANGED();api.confirmPageRefresh();assert.equal(reloads,1,'chat change revokes confirmation');
+api.toggleChatNavigation();api.requestPageRefresh();settings.enabled=false;api.applyVisualSettings();
+api.confirmPageRefresh();assert.equal(reloads,1,'disabled pet cannot reload');
+settings.enabled=true;api.requestPageRefresh();assert.equal(refreshConfirm.hidden,true,'closed menu cannot request refresh');
+console.log('PASS: reload only after confirmation, safe keyboard focus, cancel, generation notice, duplicate click, chat switch and disable.');
