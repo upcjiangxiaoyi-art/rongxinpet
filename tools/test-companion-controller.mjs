@@ -23,7 +23,7 @@ const world={...legacy,Companion,SCENES,sceneLines,currentCard,migrateCompanionS
 const sandbox=vm.createContext(world);
 let source=await readFile(new URL('../index.js',import.meta.url),'utf8');
 source=source.replace(/^import .*;$/gm,'').replaceAll('import.meta.url',JSON.stringify('http://localhost/scripts/extensions/third-party/rongxinpet/index.js')).replaceAll('export function','function');
-source+='\nthis.testApi={setup(s,c,r,u,co){settings=s;context=c;renderer=r;ui=u;companion=co;},bindSillyTavernEvents,showCompanionReport,returnToAmbient,showBubble,hideBubble,handlePointerUp,scheduleLongPress,drag,positionBubble,petRongxin,getSettings,bindSettingsControls,bubbleViewportBox};';
+source+='\nthis.testApi={setup(s,c,r,u,co){settings=s;context=c;renderer=r;ui=u;companion=co;},bindSillyTavernEvents,showCompanionReport,returnToAmbient,showBubble,hideBubble,handlePointerUp,scheduleLongPress,drag,positionBubble,petRongxin,getSettings,bindSettingsControls,bubbleViewportBox,registerTap,handlePointerDown,handlePointerMove,handleClickGuard,handlePetKeydown,toggleChatNavigation,closeChatNavigation,positionChatNavigation,jumpChatToEdge,applyVisualSettings};';
 vm.runInContext(source,sandbox);
 const api=sandbox.testApi;api.setup(settings,ctx,renderer,{root,bubble},cat);api.bindSillyTavernEvents();
 handlers.GENERATION_STARTED('normal');ctx.chat.push({mes:'reply',send_date:'one'});handlers.MESSAGE_RECEIVED(1);handlers.GENERATION_ENDED();
@@ -112,3 +112,59 @@ advance(100);assert.notEqual(bubble.style.top,oldTop,'visible bubble follows lat
 advance(5000);assert.ok(!classes.has('is-visible'));
 const hiddenTop=bubble.style.top;root.getBoundingClientRect=()=>({left:270,top:50,width:80,height:80});advance(200);assert.equal(bubble.style.top,hiddenTop,'follow stops on dismissal');
 console.log('PASS: keyboard client/layout origin correction, late viewport pan and follow timer cleanup.');
+
+// Navigation shares the real controller's tap timers and pointer state.
+world.window.visualViewport=undefined;
+root.style.left='270px';root.style.top='650px';
+root.getBoundingClientRect=()=>({left:270,top:650,width:80,height:80});
+root.focus=()=>{world.document.activeElement=root;};
+const navButton={focus(){world.document.activeElement=this;}};
+const navigation={hidden:true,style:{},offsetWidth:154,offsetHeight:56,contains:x=>x===navButton,querySelector:()=>navButton};
+const scrolls=[];
+const chat={scrollHeight:6000,getClientRects:()=>[{}],scrollTo:options=>scrolls.push({...options})};
+world.document.getElementById=id=>id==='chat'?chat:null;
+world.window.getComputedStyle=()=>({getPropertyValue:()=>0});
+api.setup(settings,ctx,renderer,{root,bubble,navigation},cat);
+api.registerTap(300,690);advance(319);assert.equal(navigation.hidden,true);
+advance(1);assert.equal(navigation.hidden,false);assert.equal(renderer.state,'petting');
+api.jumpChatToEdge('top');assert.equal(navigation.hidden,true);
+assert.deepEqual(scrolls.at(-1),{top:0,behavior:'instant'});
+api.toggleChatNavigation();api.jumpChatToEdge('bottom');
+assert.deepEqual(scrolls.at(-1),{top:6000,behavior:'instant'});
+assert.equal(scrolls.length,2,'only requested scrolls; no history-loading loop');
+api.registerTap(300,690);advance(80);api.registerTap(301,690);advance(400);
+assert.equal(navigation.hidden,true);assert.equal(renderer.state,'nuzzling','double tap retains nuzzle');
+api.toggleChatNavigation();api.drag.active=true;api.drag.moved=false;api.scheduleLongPress();advance(600);
+assert.equal(navigation.hidden,true);assert.equal(api.drag.longPress,true);
+api.handlePointerUp({pointerId:api.drag.pointerId,clientX:300,clientY:690,stopImmediatePropagation(){},preventDefault(){}});
+advance(5000);
+const pointer={pointerId:7,clientX:310,clientY:690,stopImmediatePropagation(){},preventDefault(){}};
+api.registerTap(300,690);api.drag.active=true;api.drag.pointerId=7;api.drag.startX=300;api.drag.startY=690;api.drag.startLeft=270;api.drag.startTop=650;
+api.handlePointerMove(pointer);advance(400);assert.equal(navigation.hidden,true,'tap then drag cancels delayed menu');
+api.handlePointerUp(pointer);advance(400);assert.equal(navigation.hidden,true,'drag release is not a tap');
+assert.equal(scrolls.length,2,'double tap, long press and drag never scroll');
+api.toggleChatNavigation();
+const outside={button:0,isPrimary:true,pointerType:'touch',clientX:0,clientY:0,preventDefault(){throw Error('outside click swallowed');},stopImmediatePropagation(){throw Error('outside click swallowed');}};
+api.handlePointerDown({...outside,target:navButton});assert.equal(navigation.hidden,false,'button pointer bypasses pet hit test');
+api.handleClickGuard({...outside,target:navButton});
+api.handlePointerDown(outside);assert.equal(navigation.hidden,true,'outside pointer dismisses without swallowing');
+api.handlePetKeydown({key:'Enter',preventDefault(){}});assert.equal(world.document.activeElement,navButton);
+api.closeChatNavigation();assert.equal(world.document.activeElement,root,'keyboard focus restored without scrolling');
+for(const [left,top,size,width,height] of [[10,10,80,390,844],[300,10,80,390,844],[10,750,80,390,844],[300,750,80,390,844],[10,250,303,320,568],[950,500,202,1280,800]]) {
+    world.document.documentElement.clientWidth=width;world.document.documentElement.clientHeight=height;
+    root.style.left=`${left}px`;root.style.top=`${top}px`;root.getBoundingClientRect=()=>({left,top,width:size,height:size});
+    api.toggleChatNavigation();
+    const x=parseFloat(navigation.style.left),y=parseFloat(navigation.style.top);
+    assert.ok(x>=8 && y>=8 && x+154<=width-8 && y+56<=height-8,'panel stays inside viewport');
+    api.closeChatNavigation();
+}
+world.window.visualViewport={offsetLeft:0,offsetTop:220,width:390,height:410};
+root.style.left='270px';root.style.top='400px';root.getBoundingClientRect=()=>({left:270,top:180,width:80,height:80});
+api.toggleChatNavigation();assert.ok(parseFloat(navigation.style.top)>=220,'Safari client/layout correction');
+handlers.CHAT_CHANGED();assert.equal(navigation.hidden,true);
+api.registerTap(300,690);handlers.CHAT_CHANGED();advance(400);assert.equal(navigation.hidden,true,'chat switch cancels pending tap');
+api.toggleChatNavigation();settings.enabled=false;api.applyVisualSettings();assert.equal(navigation.hidden,true);
+api.jumpChatToEdge('top');assert.equal(scrolls.length,2,'disabled pet cannot scroll');
+settings.enabled=true;chat.getClientRects=()=>[];api.jumpChatToEdge('bottom');assert.equal(scrolls.length,2,'hidden chat is ignored');
+world.document.getElementById=()=>null;api.jumpChatToEdge('top');assert.equal(scrolls.length,2,'no fallback scroll on unrelated page');
+console.log('PASS: navigation scroll targets, tap/drag/long-press races, outside interaction, keyboard focus, edges, Safari coordinates, chat switch and disabled/absent chat.');

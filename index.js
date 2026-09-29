@@ -207,6 +207,7 @@ function saveSettings() {
 function createPetUi() {
     const existing = document.getElementById('rongxin-pet-root');
     existing?.remove();
+    document.getElementById('rongxin-chat-navigation')?.remove();
     document.getElementById(LEGACY_ROOT_ID)?.remove();
     document.getElementById(LEGACY_PANEL_ID)?.remove();
 
@@ -219,10 +220,40 @@ function createPetUi() {
     root.innerHTML = `
         <div class="rongxin-speech" aria-live="polite"></div>
         <canvas class="rongxin-canvas" width="500" height="500" aria-hidden="true"></canvas>
-        <span class="rongxin-drag-hint" aria-hidden="true">拖动 · 点摸摸 · 长按报数</span>
+        <span class="rongxin-drag-hint" aria-hidden="true">轻点摸摸与跳转 · 长按报数</span>
     `;
 
     document.body.append(root);
+
+    const navigation = document.createElement('div');
+    navigation.id = 'rongxin-chat-navigation';
+    navigation.hidden = true;
+    navigation.setAttribute('role', 'group');
+    navigation.setAttribute('aria-label', '聊天快捷跳转');
+    navigation.innerHTML = `
+        <button type="button" data-edge="top" title="回到已加载聊天的顶部">↑ 回顶</button>
+        <button type="button" data-edge="bottom" title="回到最新消息底部">↓ 回底</button>
+    `;
+    root.setAttribute('aria-controls', navigation.id);
+    root.setAttribute('aria-expanded', 'false');
+    document.body.append(navigation);
+    on(navigation, 'click', (event) => {
+        const button = event.target.closest('button[data-edge]');
+        if (!button) return;
+        event.stopImmediatePropagation();
+        jumpChatToEdge(button.dataset.edge);
+    });
+    on(document, 'keydown', (event) => {
+        if (event.key === 'Escape' && !navigation.hidden) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            closeChatNavigation();
+        }
+    }, { capture: true });
+    on(window, 'blur', () => {
+        clearPendingTap();
+        closeChatNavigation();
+    });
 
     const canvas = root.querySelector('.rongxin-canvas');
     const bubble = root.querySelector('.rongxin-speech');
@@ -241,6 +272,8 @@ function createPetUi() {
     on(window, 'blur', abandonPointerInteraction);
     on(document, 'visibilitychange', () => {
         if (document.hidden) {
+            closeChatNavigation();
+            clearPendingTap();
             abandonPointerInteraction();
         }
     });
@@ -249,7 +282,64 @@ function createPetUi() {
     on(document, 'input', handleTypingInput, { capture: true, passive: true });
     on(root, 'keydown', handlePetKeydown);
 
-    return { root, canvas, bubble, hint };
+    return { root, canvas, bubble, hint, navigation };
+}
+
+function closeChatNavigation() {
+    if (!ui?.navigation) return;
+    const hadFocus = ui.navigation.contains(document.activeElement);
+    ui.navigation.hidden = true;
+    ui.root.setAttribute('aria-expanded', 'false');
+    if (hadFocus) ui.root.focus({ preventScroll: true });
+}
+
+function toggleChatNavigation({ keyboard = false } = {}) {
+    if (!ui?.navigation || !settings?.enabled) return;
+    if (!ui.navigation.hidden) {
+        closeChatNavigation();
+        return;
+    }
+    ui.navigation.hidden = false;
+    ui.root.setAttribute('aria-expanded', 'true');
+    positionChatNavigation();
+    if (keyboard) ui.navigation.querySelector('button').focus({ preventScroll: true });
+}
+
+function positionChatNavigation() {
+    if (!ui?.navigation || ui.navigation.hidden) return;
+    const pet = ui.root.getBoundingClientRect();
+    const viewport = bubbleViewportBox(pet);
+    const panel = ui.navigation;
+    panel.style.maxWidth = `${Math.max(1, viewport.width - 16)}px`;
+    const width = panel.offsetWidth;
+    const height = panel.offsetHeight;
+    // Prefer beside her so the speech bubble can stay above her head.
+    let left = pet.left - width - 8;
+    let top = pet.top + (pet.height - height) / 2;
+    if (left < viewport.left + 8) {
+        left = pet.left + pet.width + 8;
+        if (left + width > viewport.left + viewport.width - 8) {
+            left = pet.left + (pet.width - width) / 2;
+            top = pet.top + pet.height + 8;
+            if (top + height > viewport.top + viewport.height - 8) top = pet.top - height - 8;
+        }
+    }
+    left = clamp(left, viewport.left + 8, Math.max(viewport.left + 8, viewport.left + viewport.width - width - 8));
+    top = clamp(top, viewport.top + 8, Math.max(viewport.top + 8, viewport.top + viewport.height - height - 8));
+    // Convert client rect coordinates back to fixed CSS coordinates on Safari.
+    const cssLeft = Number.parseFloat(ui.root.style.left);
+    const cssTop = Number.parseFloat(ui.root.style.top);
+    panel.style.left = `${left + (Number.isFinite(cssLeft) ? cssLeft - pet.left : 0)}px`;
+    panel.style.top = `${top + (Number.isFinite(cssTop) ? cssTop - pet.top : 0)}px`;
+}
+
+function jumpChatToEdge(edge) {
+    closeChatNavigation();
+    const chat = document.getElementById('chat');
+    if (!settings?.enabled || !chat || !chat.getClientRects().length) return;
+    // Stop any queued Tavern scroll animation before this deliberate jump.
+    window.jQuery?.(chat).stop?.(true);
+    chat.scrollTo({ top: edge === 'top' ? 0 : chat.scrollHeight, behavior: 'instant' });
 }
 
 /**
@@ -377,6 +467,7 @@ function armClickGuard(event) {
 }
 
 function handleClickGuard(event) {
+    if (ui?.navigation?.contains(event.target)) return;
     if (!clickGuard) {
         return;
     }
@@ -609,6 +700,8 @@ function bindSettingsControls() {
 
     if (resetPosition) {
         on(resetPosition, 'click', () => {
+            closeChatNavigation();
+            clearPendingTap();
             // Release any interrupted drag/walk before replacing its saved position.
             finishPointerInteraction();
             clearAutoWalkTimer();
@@ -692,7 +785,11 @@ function applyVisualSettings({ reposition = false } = {}) {
         return;
     }
 
-    if (!settings.enabled) silentPlayer?.stop();
+    if (!settings.enabled) {
+        silentPlayer?.stop();
+        closeChatNavigation();
+        clearPendingTap();
+    }
     ui.root.classList.toggle('is-disabled', !settings.enabled);
     if (settings.enabled) {
         renderer?.start();
@@ -771,6 +868,7 @@ function setPixelPosition(left, top) {
     ui.root.style.left = `${clamp(left, bounds.minimumLeft, bounds.maximumLeft)}px`;
     ui.root.style.top = `${clamp(top, bounds.minimumTop, bounds.maximumTop)}px`;
     if (ui.bubble.classList.contains('is-visible')) positionBubble();
+    positionChatNavigation();
 }
 
 function applyStoredPosition() {
@@ -802,6 +900,7 @@ function rememberCurrentPosition() {
 function handlePointerDown(event) {
     // A deliberate new pointer action must never inherit an old synthetic-click guard.
     clickGuard = undefined;
+    if (ui?.navigation?.contains(event.target)) return;
     if (event.button !== undefined && event.button !== 0) {
         return;
     }
@@ -810,6 +909,10 @@ function handlePointerDown(event) {
         || !event.isPrimary
         || !hitsRongxin(event.clientX, event.clientY, event.pointerType || 'mouse')
     ) {
+        if (!drag.active) {
+            closeChatNavigation();
+            clearPendingTap();
+        }
         return;
     }
 
@@ -840,6 +943,8 @@ function handlePointerMove(event) {
     const deltaY = event.clientY - drag.startY;
     if (!drag.moved && Math.hypot(deltaX, deltaY) >= DRAG_THRESHOLD) {
         drag.moved = true;
+        closeChatNavigation();
+        clearPendingTap();
         clearLongPressTimer();
         ui.root.classList.add('is-dragging');
         transitionTo(PET_STATES.LISTENING, {
@@ -938,6 +1043,8 @@ function scheduleLongPress() {
         }
 
         drag.longPress = true;
+        closeChatNavigation();
+        clearPendingTap();
         transitionTo(PET_STATES.PETTING, {
             duration: 1800,
             priority: 55,
@@ -960,6 +1067,7 @@ function registerTap(clientX, clientY) {
         && Math.hypot(clientX - pendingTap.x, clientY - pendingTap.y) <= DOUBLE_TAP_RADIUS
     ) {
         clearPendingTap();
+        closeChatNavigation();
         doublePetRongxin();
         if (settings.doubleTapKeepAlive) silentPlayer?.toggle();
         return;
@@ -970,7 +1078,9 @@ function registerTap(clientX, clientY) {
     tap.timer = window.setTimeout(() => {
         if (pendingTap === tap) {
             pendingTap = undefined;
+            if (drag.active || !settings?.enabled) return;
             petRongxin();
+            toggleChatNavigation();
         }
     }, DOUBLE_TAP_WINDOW);
     pendingTap = tap;
@@ -1062,8 +1172,14 @@ function handlePetKeydown(event) {
     }
 
     event.preventDefault();
-    if (event.shiftKey) showCompanionReport();
-    else petRongxin();
+    if (event.repeat) return;
+    if (event.shiftKey) {
+        closeChatNavigation();
+        showCompanionReport();
+    } else {
+        petRongxin();
+        toggleChatNavigation({ keyboard: true });
+    }
 }
 
 function petRongxin() {
@@ -1195,6 +1311,8 @@ function startAutoWalk(preferredDirection = 0, duration = WALK_DURATION, { annou
         scheduleAutoWalk();
         return false;
     }
+
+    closeChatNavigation();
 
     clearPoseTimer();
     clearAutoWalkTimer();
@@ -1685,6 +1803,8 @@ function bindSillyTavernEvents() {
     });
 
     listen('CHAT_CHANGED', () => {
+        closeChatNavigation();
+        clearPendingTap();
         companion.baseline();
         refreshBubbleEditor?.();
         reportUntil = 0;
@@ -1764,6 +1884,7 @@ export function destroy() {
     clearAutoWalkTimer();
     cancelAutoWalk({ settle: false, remember: false });
     renderer?.destroy();
+    ui?.navigation?.remove();
     ui?.root?.remove();
     document.getElementById('rongxin-settings')?.remove();
 
