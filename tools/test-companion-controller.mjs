@@ -119,7 +119,7 @@ root.style.left='270px';root.style.top='650px';
 root.getBoundingClientRect=()=>({left:270,top:650,width:80,height:80});
 root.focus=()=>{world.document.activeElement=root;};
 const navButton={focus(){world.document.activeElement=this;}};
-const navigation={hidden:true,style:{},offsetWidth:154,offsetHeight:56,contains:x=>x===navButton,querySelector:()=>navButton};
+const navigation={hidden:true,style:{},offsetWidth:154,offsetHeight:104,contains:x=>x===navButton,querySelector:()=>navButton};
 const scrolls=[];
 const chat={scrollHeight:6000,getClientRects:()=>[{}],scrollTo:options=>scrolls.push({...options})};
 world.document.getElementById=id=>id==='chat'?chat:null;
@@ -155,7 +155,7 @@ for(const [left,top,size,width,height] of [[10,10,80,390,844],[300,10,80,390,844
     root.style.left=`${left}px`;root.style.top=`${top}px`;root.getBoundingClientRect=()=>({left,top,width:size,height:size});
     api.toggleChatNavigation();
     const x=parseFloat(navigation.style.left),y=parseFloat(navigation.style.top);
-    assert.ok(x>=8 && y>=8 && x+154<=width-8 && y+56<=height-8,'panel stays inside viewport');
+    assert.ok(x>=8 && y>=8 && x+154<=width-8 && y+104<=height-8,'three-button panel stays inside viewport');
     api.closeChatNavigation();
 }
 world.window.visualViewport={offsetLeft:0,offsetTop:220,width:390,height:410};
@@ -168,3 +168,29 @@ api.jumpChatToEdge('top');assert.equal(scrolls.length,2,'disabled pet cannot scr
 settings.enabled=true;chat.getClientRects=()=>[];api.jumpChatToEdge('bottom');assert.equal(scrolls.length,2,'hidden chat is ignored');
 world.document.getElementById=()=>null;api.jumpChatToEdge('top');assert.equal(scrolls.length,2,'no fallback scroll on unrelated page');
 console.log('PASS: navigation scroll targets, tap/drag/long-press races, outside interaction, keyboard focus, edges, Safari coordinates, chat switch and disabled/absent chat.');
+
+// Latest reply: local chat coordinates, including its border and an 8px reading gap.
+world.document.getElementById=id=>id==='chat'?chat:null;
+chat.getClientRects=()=>[{}];chat.scrollTop=2100;chat.clientTop=2;
+chat.getBoundingClientRect=()=>({top:100});
+const replyText={getClientRects:()=>[{}],getBoundingClientRect:()=>({top:-400})};
+const olderReply={getClientRects:()=>[{}],querySelector:()=>({getClientRects:()=>[{}],getBoundingClientRect:()=>({top:-1800})})};
+const latestReply={getClientRects:()=>[{}],querySelector:()=>replyText,getBoundingClientRect:()=>({top:-440})};
+let replies=[olderReply,latestReply];
+chat.querySelectorAll=selector=>{
+    assert.equal(selector,':scope > .mes[mesid]:not([is_user="true"]):not([is_system="true"])','only direct Tavern rows; exclude user/system messages');
+    return replies;
+};
+api.toggleChatNavigation();api.jumpChatToEdge('reply');
+assert.equal(navigation.hidden,true);
+assert.deepEqual(scrolls.at(-1),{top:1590,behavior:'instant'},'latest reply body rather than older reply or chat bottom');
+replyText.getClientRects=()=>[];api.jumpChatToEdge('reply');
+assert.deepEqual(scrolls.at(-1),{top:1550,behavior:'instant'},'hidden body falls back to its message header');
+chat.scrollTop=0;latestReply.getBoundingClientRect=()=>({top:100});api.jumpChatToEdge('reply');
+assert.equal(scrolls.at(-1).top,0,'top padding cannot produce negative scroll');
+const count=scrolls.length;
+latestReply.getClientRects=()=>[];api.jumpChatToEdge('reply');
+assert.equal(scrolls.length,count,'hidden latest reply must not jump to an older reply');
+replies=[];api.jumpChatToEdge('reply');assert.equal(scrolls.length,count,'empty or user-only chat does not jump');
+api.jumpChatToEdge('unknown');assert.equal(scrolls.length,count,'unknown action is ignored');
+console.log('PASS: latest reply body, user/system exclusion selector, nested-row exclusion, border/scroll offset, hidden body fallback, no-reply and invalid-action handling.');

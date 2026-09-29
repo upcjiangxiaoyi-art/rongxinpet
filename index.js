@@ -233,6 +233,7 @@ function createPetUi() {
     navigation.innerHTML = `
         <button type="button" data-edge="top" title="回到已加载聊天的顶部">↑ 回顶</button>
         <button type="button" data-edge="bottom" title="回到最新消息底部">↓ 回底</button>
+        <button type="button" data-edge="reply" title="回到最后一条角色回复的开头">↥ 本条开头</button>
     `;
     root.setAttribute('aria-controls', navigation.id);
     root.setAttribute('aria-expanded', 'false');
@@ -336,10 +337,25 @@ function positionChatNavigation() {
 function jumpChatToEdge(edge) {
     closeChatNavigation();
     const chat = document.getElementById('chat');
-    if (!settings?.enabled || !chat || !chat.getClientRects().length) return;
+    if (!settings?.enabled || !chat || !chat.getClientRects().length || !['top', 'bottom', 'reply'].includes(edge)) return;
+    let target;
+    if (edge === 'reply') {
+        // Only actual Tavern message rows, not nested cards from other extensions.
+        const replies = chat.querySelectorAll(':scope > .mes[mesid]:not([is_user="true"]):not([is_system="true"])');
+        const reply = replies[replies.length - 1];
+        if (!reply || !reply.getClientRects().length) {
+            showBubble('还没有可跳转的角色回复哦～', 1800, false, true);
+            return;
+        }
+        const text = reply.querySelector('.mes_text');
+        target = text?.getClientRects().length ? text : reply;
+    }
     // Stop any queued Tavern scroll animation before this deliberate jump.
     window.jQuery?.(chat).stop?.(true);
-    chat.scrollTo({ top: edge === 'top' ? 0 : chat.scrollHeight, behavior: 'instant' });
+    const top = target
+        ? Math.max(0, chat.scrollTop + target.getBoundingClientRect().top - chat.getBoundingClientRect().top - chat.clientTop - 8)
+        : edge === 'top' ? 0 : chat.scrollHeight;
+    chat.scrollTo({ top, behavior: 'instant' });
 }
 
 /**

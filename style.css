@@ -37,7 +37,8 @@
 #rongxin-chat-navigation {
     position: fixed;
     z-index: 2147483647;
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 4px;
     box-sizing: border-box;
     padding: 5px;
@@ -67,9 +68,15 @@
     cursor: pointer;
 }
 
-#rongxin-chat-navigation button:last-child {
+#rongxin-chat-navigation button[data-edge="bottom"] {
     background: #f6ebdb;
     color: #795d3e;
+}
+
+#rongxin-chat-navigation button[data-edge="reply"] {
+    grid-column: 1 / -1;
+    background: #ede8f4;
+    color: #665778;
 }
 
 #rongxin-chat-navigation button:focus-visible {
