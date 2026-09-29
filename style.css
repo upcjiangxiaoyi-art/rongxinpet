@@ -68,12 +68,8 @@
     cursor: pointer;
 }
 
-#rongxin-chat-navigation button[data-edge="bottom"] {
-    background: #f6ebdb;
-    color: #795d3e;
-}
-
 #rongxin-chat-navigation button[data-edge="reply"] {
+    grid-column: 1 / -1;
     background: #ede8f4;
     color: #665778;
 }

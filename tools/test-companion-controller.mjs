@@ -130,8 +130,8 @@ advance(1);assert.equal(navigation.hidden,false);assert.equal(renderer.state,'pe
 api.jumpChatToEdge('top');assert.equal(navigation.hidden,true);
 assert.deepEqual(scrolls.at(-1),{top:0,behavior:'instant'});
 api.toggleChatNavigation();api.jumpChatToEdge('bottom');
-assert.deepEqual(scrolls.at(-1),{top:6000,behavior:'instant'});
-assert.equal(scrolls.length,2,'only requested scrolls; no history-loading loop');
+assert.equal(scrolls.length,1,'removed bottom action is ignored');
+assert.equal(scrolls.length,1,'only requested scrolls; no history-loading loop');
 api.registerTap(300,690);advance(80);api.registerTap(301,690);advance(400);
 assert.equal(navigation.hidden,true);assert.equal(renderer.state,'nuzzling','double tap retains nuzzle');
 api.toggleChatNavigation();api.drag.active=true;api.drag.moved=false;api.scheduleLongPress();advance(600);
@@ -142,7 +142,7 @@ const pointer={pointerId:7,clientX:310,clientY:690,stopImmediatePropagation(){},
 api.registerTap(300,690);api.drag.active=true;api.drag.pointerId=7;api.drag.startX=300;api.drag.startY=690;api.drag.startLeft=270;api.drag.startTop=650;
 api.handlePointerMove(pointer);advance(400);assert.equal(navigation.hidden,true,'tap then drag cancels delayed menu');
 api.handlePointerUp(pointer);advance(400);assert.equal(navigation.hidden,true,'drag release is not a tap');
-assert.equal(scrolls.length,2,'double tap, long press and drag never scroll');
+assert.equal(scrolls.length,1,'double tap, long press and drag never scroll');
 api.toggleChatNavigation();
 const outside={button:0,isPrimary:true,pointerType:'touch',clientX:0,clientY:0,preventDefault(){throw Error('outside click swallowed');},stopImmediatePropagation(){throw Error('outside click swallowed');}};
 api.handlePointerDown({...outside,target:navButton});assert.equal(navigation.hidden,false,'button pointer bypasses pet hit test');
@@ -155,7 +155,7 @@ for(const [left,top,size,width,height] of [[10,10,80,390,844],[300,10,80,390,844
     root.style.left=`${left}px`;root.style.top=`${top}px`;root.getBoundingClientRect=()=>({left,top,width:size,height:size});
     api.toggleChatNavigation();
     const x=parseFloat(navigation.style.left),y=parseFloat(navigation.style.top);
-    assert.ok(x>=8 && y>=8 && x+navigation.offsetWidth<=width-8 && y+104<=height-8,'four-button panel stays inside viewport');
+    assert.ok(x>=8 && y>=8 && x+navigation.offsetWidth<=width-8 && y+104<=height-8,'three-button panel stays inside viewport');
     api.closeChatNavigation();
 }
 world.window.visualViewport={offsetLeft:0,offsetTop:220,width:390,height:410};
@@ -164,9 +164,9 @@ api.toggleChatNavigation();assert.ok(parseFloat(navigation.style.top)>=220,'Safa
 handlers.CHAT_CHANGED();assert.equal(navigation.hidden,true);
 api.registerTap(300,690);handlers.CHAT_CHANGED();advance(400);assert.equal(navigation.hidden,true,'chat switch cancels pending tap');
 api.toggleChatNavigation();settings.enabled=false;api.applyVisualSettings();assert.equal(navigation.hidden,true);
-api.jumpChatToEdge('top');assert.equal(scrolls.length,2,'disabled pet cannot scroll');
-settings.enabled=true;chat.getClientRects=()=>[];api.jumpChatToEdge('bottom');assert.equal(scrolls.length,2,'hidden chat is ignored');
-world.document.getElementById=()=>null;api.jumpChatToEdge('top');assert.equal(scrolls.length,2,'no fallback scroll on unrelated page');
+api.jumpChatToEdge('top');assert.equal(scrolls.length,1,'disabled pet cannot scroll');
+settings.enabled=true;chat.getClientRects=()=>[];api.jumpChatToEdge('top');assert.equal(scrolls.length,1,'hidden chat is ignored');
+world.document.getElementById=()=>null;api.jumpChatToEdge('top');assert.equal(scrolls.length,1,'no fallback scroll on unrelated page');
 console.log('PASS: navigation scroll targets, tap/drag/long-press races, outside interaction, keyboard focus, edges, Safari coordinates, chat switch and disabled/absent chat.');
 
 // Latest reply: local chat coordinates, including its border and an 8px reading gap.

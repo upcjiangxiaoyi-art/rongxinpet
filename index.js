@@ -231,10 +231,9 @@ function createPetUi() {
     navigation.setAttribute('role', 'group');
     navigation.setAttribute('aria-label', '聊天快捷跳转');
     navigation.innerHTML = `
-        <button type="button" data-edge="top" title="回到已加载聊天的顶部">↑ 回顶</button>
-        <button type="button" data-edge="bottom" title="回到最新消息底部">↓ 回底</button>
-        <button type="button" data-edge="reply" title="回到最后一条角色回复的开头">↥ 本条开头</button>
         <button type="button" data-refresh="ask" title="重新加载酒馆页面">↻ 刷新页面</button>
+        <button type="button" data-edge="top" title="回到已加载聊天的顶部">↑ 回顶</button>
+        <button type="button" data-edge="reply" title="回到最后一条角色回复的开头">↥ 回本条开头</button>
         <div class="rongxin-refresh-confirm" hidden>
             <p role="status"></p>
             <button type="button" data-refresh="confirm">确认刷新</button>
@@ -371,7 +370,7 @@ function confirmPageRefresh() {
 function jumpChatToEdge(edge) {
     closeChatNavigation();
     const chat = document.getElementById('chat');
-    if (!settings?.enabled || !chat || !chat.getClientRects().length || !['top', 'bottom', 'reply'].includes(edge)) return;
+    if (!settings?.enabled || !chat || !chat.getClientRects().length || !['top', 'reply'].includes(edge)) return;
     let target;
     if (edge === 'reply') {
         // Only actual Tavern message rows, not nested cards from other extensions.
@@ -388,7 +387,7 @@ function jumpChatToEdge(edge) {
     window.jQuery?.(chat).stop?.(true);
     const top = target
         ? Math.max(0, chat.scrollTop + target.getBoundingClientRect().top - chat.getBoundingClientRect().top - chat.clientTop - 8)
-        : edge === 'top' ? 0 : chat.scrollHeight;
+        : 0;
     chat.scrollTo({ top, behavior: 'instant' });
 }
 
