@@ -53,9 +53,9 @@ api.showBubble('first automatic',1500);assert.equal(bubble.textContent,'first au
 advance(5000);api.showBubble('too soon',1500);assert.ok(!classes.has('is-visible'),'automatic bubbles throttled');
 advance(5000);api.showBubble('next automatic',0);assert.equal(bubble.textContent,'next automatic');
 advance(5000);assert.ok(!classes.has('is-visible'),'waiting bubble has finite lifetime');
-ctx.extensionSettings.rongxin_pet={scale:30};assert.equal(api.getSettings().scale,30,'saved 30 percent survives reload');
-ctx.extensionSettings.rongxin_pet.scale=20;assert.equal(api.getSettings().scale,30,'minimum is 30 percent');
-console.log('PASS: quiet/manual interaction, ten-second ambient interval, finite wait bubble and 30-percent settings.');
+ctx.extensionSettings.rongxin_pet={scale:20};assert.equal(api.getSettings().scale,20,'saved 20 percent survives reload');
+ctx.extensionSettings.rongxin_pet.scale=10;assert.equal(api.getSettings().scale,20,'minimum is 20 percent');
+console.log('PASS: quiet/manual interaction, ten-second ambient interval, finite wait bubble and 20-percent settings.');
 // Exercise editor bindings: the selected scope must be the actual write target.
 const elements={};
 for(const id of ['rongxin-bubble-scene','rongxin-bubble-lines','rongxin-bubble-scope','rongxin-bubble-scope-label','rongxin-bubble-reset','rongxin-bubble-preview','rongxin-report','rongxin-companion-mode']) {
