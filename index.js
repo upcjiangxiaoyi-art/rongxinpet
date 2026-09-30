@@ -191,7 +191,7 @@ function getSettings() {
         ...(stored.position ?? {}),
     };
 
-    stored.scale = clamp(finiteNumber(stored.scale, DEFAULT_SETTINGS.scale), 40, 150);
+    stored.scale = clamp(finiteNumber(stored.scale, DEFAULT_SETTINGS.scale), 30, 150);
     stored.opacity = clamp(finiteNumber(stored.opacity, DEFAULT_SETTINGS.opacity), 40, 100);
     stored.position.x = clamp(finiteNumber(stored.position.x, DEFAULT_SETTINGS.position.x), 0, 1);
     stored.position.y = clamp(finiteNumber(stored.position.y, DEFAULT_SETTINGS.position.y), 0, 1);
@@ -697,7 +697,7 @@ function bindSettingsControls() {
 
     if (scale) {
         on(scale, 'input', (event) => {
-            settings.scale = clamp(Number(event.currentTarget.value), 40, 150);
+            settings.scale = clamp(Number(event.currentTarget.value), 30, 150);
             applyVisualSettings({ reposition: true });
             syncSettingsControls();
             saveSettings();
